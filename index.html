@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Church Bus Booker</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body class="member-shell">
+    <main class="page">
+      <section class="hero">
+        <div class="hero-copy">
+          <div class="simple-brand">
+            <img
+              src="/pcg-logo.png"
+              alt="Presbyterian Church of Ghana logo"
+              class="simple-brand-logo"
+            />
+            <div>
+              <p class="simple-brand-name">Presbyterian Church of Ghana</p>
+              <p class="simple-brand-role">Church Transport Desk</p>
+            </div>
+          </div>
+          <p class="eyebrow">Transport Desk</p>
+          <h1>Book the church bus simply and ahead of time.</h1>
+          <p class="hero-text">
+            Members can request the bus for ministry work, fellowship events, outreach, and special programs.
+            Every request is reviewed by the transport team before it is approved.
+          </p>
+          <div class="rule-strip">
+            <span>One bus only</span>
+            <span>Half day or full day</span>
+            <span>Email and SMS updates</span>
+          </div>
+        </div>
+        <aside class="hero-card">
+          <h2>How it works</h2>
+          <ol>
+            <li>Submit your trip request with the date and slot.</li>
+            <li>Transport admins review the request.</li>
+            <li>You receive a confirmation update after the decision is made.</li>
+          </ol>
+        </aside>
+      </section>
+
+      <section class="panel">
+        <div class="panel-heading">
+          <div>
+            <p class="eyebrow">Bus Request Form</p>
+            <h2>Book the church bus</h2>
+            <p class="panel-copy">
+              Use this form for official church travel, ministry outreach, rehearsals, conferences, and approved
+              fellowship activities.
+            </p>
+          </div>
+          <a class="admin-link" href="/admin">Admin approval desk</a>
+        </div>
+
+        <form id="booking-form" class="booking-form">
+          <label>
+            <span>Full name</span>
+            <input name="requesterName" type="text" placeholder="Martha Owusu" required />
+            <small data-error-for="requesterName"></small>
+          </label>
+
+          <label>
+            <span>Ministry or department</span>
+            <input name="ministryName" type="text" placeholder="Youth Ministry" required />
+            <small data-error-for="ministryName"></small>
+          </label>
+
+          <label>
+            <span>Email address</span>
+            <input name="requesterEmail" type="email" placeholder="member@yourchurch.org" />
+            <small data-error-for="requesterEmail"></small>
+          </label>
+
+          <label>
+            <span>Phone number</span>
+            <input name="phone" type="tel" placeholder="+233 24 123 4567" />
+            <small data-error-for="phone"></small>
+          </label>
+
+          <label>
+            <span>Event name</span>
+            <input name="eventName" type="text" placeholder="Choir outreach" required />
+            <small data-error-for="eventName"></small>
+          </label>
+
+          <label>
+            <span>Purpose of trip</span>
+            <textarea name="purpose" rows="3" placeholder="Describe why the bus is needed." required></textarea>
+            <small data-error-for="purpose"></small>
+          </label>
+
+          <label>
+            <span>Date needed</span>
+            <input id="travelDate" name="travelDate" type="date" required />
+            <small data-error-for="travelDate"></small>
+          </label>
+
+          <label>
+            <span>Booking type</span>
+            <select id="bookingType" name="bookingType" required>
+              <option value="half_day">Half day</option>
+              <option value="full_day">Full day</option>
+            </select>
+            <small data-error-for="bookingType"></small>
+          </label>
+
+          <label id="timeSlotWrap">
+            <span>Half-day slot</span>
+            <select id="timeSlot" name="timeSlot" required>
+              <option value="morning">Morning</option>
+              <option value="afternoon">Afternoon</option>
+            </select>
+            <small data-error-for="timeSlot"></small>
+          </label>
+
+          <label>
+            <span>Pickup location</span>
+            <input name="pickupLocation" type="text" placeholder="Church auditorium" required />
+            <small data-error-for="pickupLocation"></small>
+          </label>
+
+          <label>
+            <span>Destination</span>
+            <input name="destination" type="text" placeholder="Kasoa prayer center" required />
+            <small data-error-for="destination"></small>
+          </label>
+
+          <label>
+            <span>Expected passengers</span>
+            <input name="passengerCount" type="number" min="1" max="60" placeholder="24" required />
+            <small data-error-for="passengerCount"></small>
+          </label>
+
+          <label class="full-width">
+            <span>Extra notes</span>
+            <textarea name="notes" rows="3" placeholder="Add any timing or coordination notes."></textarea>
+          </label>
+
+          <div class="full-width form-actions">
+            <button id="submitButton" type="submit">Submit request</button>
+            <p class="helper-text">Provide either an email or phone number. Your request stays pending until a transport admin reviews it.</p>
+          </div>
+
+          <div id="formMessage" class="full-width form-message" aria-live="polite"></div>
+        </form>
+      </section>
+    </main>
+
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>

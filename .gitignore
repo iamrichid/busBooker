@@ -1,0 +1,4 @@
+.env
+.vercel
+data/bookings.json
+data/notifications.log

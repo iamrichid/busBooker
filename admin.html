@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Bus Booker Admin</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body class="admin-shell">
+    <main class="page admin-page">
+      <section class="panel admin-panel">
+        <div class="panel-heading">
+          <div>
+            <div class="simple-brand simple-brand-admin">
+              <img
+                src="/pcg-logo.png"
+                alt="Presbyterian Church of Ghana logo"
+                class="simple-brand-logo"
+              />
+              <div>
+                <p class="simple-brand-name">Presbyterian Church of Ghana</p>
+                <p class="simple-brand-role">Transport Approval Desk</p>
+              </div>
+            </div>
+            <p class="eyebrow">Approval Desk</p>
+            <h1>Review bus requests</h1>
+            <p class="panel-copy">
+              Approve only the trips that fit the church schedule and available bus slot for the selected date.
+            </p>
+          </div>
+          <a class="admin-link" href="/">Member request form</a>
+        </div>
+
+        <div class="admin-login">
+          <label>
+            <span>Admin access code</span>
+            <input id="adminAccessCode" type="password" placeholder="Enter access code" />
+          </label>
+          <label>
+            <span>Admin name</span>
+            <input id="adminName" type="text" placeholder="Transport secretary" />
+          </label>
+          <button id="loadBookingsButton" type="button">Load requests</button>
+        </div>
+
+        <div id="adminMessage" class="form-message" aria-live="polite"></div>
+
+        <section class="admin-grid">
+          <div>
+            <div class="section-title">
+              <h2>Pending</h2>
+              <span id="pendingCount" class="count-pill">0</span>
+            </div>
+            <div id="pendingList" class="request-list"></div>
+          </div>
+
+          <div>
+            <div class="section-title">
+              <h2>Approved</h2>
+              <span id="approvedCount" class="count-pill">0</span>
+            </div>
+            <div id="approvedList" class="request-list"></div>
+          </div>
+
+          <div>
+            <div class="section-title">
+              <h2>Declined</h2>
+              <span id="declinedCount" class="count-pill">0</span>
+            </div>
+            <div id="declinedList" class="request-list"></div>
+          </div>
+        </section>
+      </section>
+    </main>
+
+    <template id="bookingCardTemplate">
+      <article class="booking-card">
+        <div class="booking-card-top">
+          <div>
+            <p class="booking-meta"></p>
+            <h3></h3>
+          </div>
+          <span class="status-badge"></span>
+        </div>
+
+        <dl class="booking-details"></dl>
+
+        <div class="decision-block">
+          <label>
+            <span>Admin note</span>
+            <textarea rows="3" placeholder="Optional note to the requester"></textarea>
+          </label>
+          <div class="decision-actions">
+            <button type="button" data-action="approve">Approve</button>
+            <button type="button" data-action="decline" class="ghost-button">Decline</button>
+          </div>
+        </div>
+      </article>
+    </template>
+
+    <script type="module" src="/admin.js"></script>
+  </body>
+</html>
