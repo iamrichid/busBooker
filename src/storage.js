@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { appendFile, mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { HttpError } from "./http.js";
 
 const dataDir = path.join(process.cwd(), "data");
 const bookingsFile = path.join(dataDir, "bookings.json");
@@ -12,6 +13,8 @@ export async function ensureDataFiles() {
   if (usesBlobStorage()) {
     return;
   }
+
+  assertWritableLocalStorage();
 
   await mkdir(dataDir, { recursive: true });
 
@@ -32,6 +35,8 @@ export async function readBookings() {
     return readBookingsFromBlob();
   }
 
+  assertWritableLocalStorage();
+
   await ensureDataFiles();
   const raw = await readFile(bookingsFile, "utf8");
   return JSON.parse(raw);
@@ -42,6 +47,8 @@ export async function saveBooking(booking) {
     await saveBookingToBlob(booking);
     return;
   }
+
+  assertWritableLocalStorage();
 
   await ensureDataFiles();
   const bookings = await readBookings();
@@ -57,12 +64,25 @@ export async function appendNotificationLog(entry) {
     return;
   }
 
+  assertWritableLocalStorage();
+
   await ensureDataFiles();
   await appendFile(notificationsFile, `${JSON.stringify(entry)}\n`, "utf8");
 }
 
 export function usesBlobStorage() {
   return Boolean(process.env.BLOB_READ_WRITE_TOKEN);
+}
+
+function assertWritableLocalStorage() {
+  if (!process.env.VERCEL) {
+    return;
+  }
+
+  throw new HttpError(
+    500,
+    "Storage is not configured for Vercel. Add a Blob store so BLOB_READ_WRITE_TOKEN is available.",
+  );
 }
 
 async function readBookingsFromBlob() {
