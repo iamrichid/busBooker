@@ -6,28 +6,44 @@ const VALID_TIME_SLOTS = new Set(["morning", "afternoon", "full_day"]);
 
 export function validateBookingRequest(input) {
   const bookingType = normalizeText(input.bookingType);
+  const memberStatus = normalizeText(input.memberStatus).toLowerCase();
   const requestedTimeSlot = normalizeText(input.timeSlot);
   const timeSlot = bookingType === "full_day" ? "full_day" : requestedTimeSlot;
+  const phone = normalizePhone(input.phone);
   const value = {
     bookingType,
     destination: normalizeText(input.destination),
     eventName: normalizeText(input.eventName),
+    fromDate: normalizeText(input.fromDate || input.travelDate),
+    memberStatus,
+    membershipNumber: normalizeText(input.membershipNumber),
     ministryName: normalizeText(input.ministryName),
     notes: normalizeText(input.notes),
-    passengerCount: Number.parseInt(String(input.passengerCount || ""), 10),
-    phone: normalizeText(input.phone),
+    phone,
     pickupLocation: normalizeText(input.pickupLocation),
     purpose: normalizeText(input.purpose),
     requesterEmail: normalizeText(input.requesterEmail).toLowerCase(),
     requesterName: normalizeText(input.requesterName),
     timeSlot,
-    travelDate: normalizeText(input.travelDate),
+    toDate: normalizeText(input.toDate || input.travelDate),
   };
 
   const errors = {};
 
   if (!value.requesterName || value.requesterName.length < 2) {
     errors.requesterName = "Please enter the church member's full name.";
+  }
+
+  if (!new Set(["yes", "no"]).has(value.memberStatus)) {
+    errors.memberStatus = "Please choose whether you are a church member.";
+  }
+
+  if (value.memberStatus === "no") {
+    errors.memberStatus = "This booking form is only for church members.";
+  }
+
+  if (value.memberStatus === "yes" && !value.membershipNumber) {
+    errors.membershipNumber = "Please provide your membership number.";
   }
 
   if (!value.ministryName) {
@@ -44,7 +60,7 @@ export function validateBookingRequest(input) {
   }
 
   if (value.phone && !isValidPhone(value.phone)) {
-    errors.phone = "Please enter a valid phone number.";
+    errors.phone = "Please enter a valid 10-digit Ghana phone number.";
   }
 
   if (!value.eventName) {
@@ -55,10 +71,16 @@ export function validateBookingRequest(input) {
     errors.purpose = "Please share the reason for the trip.";
   }
 
-  if (!isValidDate(value.travelDate)) {
-    errors.travelDate = "Please choose a valid booking date.";
-  } else if (value.travelDate < currentDateString()) {
-    errors.travelDate = "Bus requests must be for today or a future date.";
+  if (!isValidDate(value.fromDate)) {
+    errors.fromDate = "Please choose a valid start date.";
+  } else if (value.fromDate < currentDateString()) {
+    errors.fromDate = "Bus requests must start today or a future date.";
+  }
+
+  if (!isValidDate(value.toDate)) {
+    errors.toDate = "Please choose a valid end date.";
+  } else if (isValidDate(value.fromDate) && value.toDate < value.fromDate) {
+    errors.toDate = "End date cannot be earlier than start date.";
   }
 
   if (!VALID_BOOKING_TYPES.has(value.bookingType)) {
@@ -81,10 +103,6 @@ export function validateBookingRequest(input) {
     errors.destination = "Please enter the destination.";
   }
 
-  if (!Number.isInteger(value.passengerCount) || value.passengerCount < 1 || value.passengerCount > 60) {
-    errors.passengerCount = "Please enter an estimated passenger count between 1 and 60.";
-  }
-
   return {
     ok: Object.keys(errors).length === 0,
     errors,
@@ -97,6 +115,7 @@ export function sanitizeDecisionInput(input) {
     adminName: normalizeText(input.adminName),
     adminNotes: normalizeText(input.adminNotes),
     decision: normalizeText(input.decision),
+    selectedVehicleId: normalizeText(input.selectedVehicleId),
   };
   const errors = {};
 
@@ -106,6 +125,10 @@ export function sanitizeDecisionInput(input) {
 
   if (!new Set(["approved", "declined"]).has(value.decision)) {
     errors.decision = "Choose approve or decline.";
+  }
+
+  if (value.decision === "approved" && !value.selectedVehicleId) {
+    errors.selectedVehicleId = "Please assign a bus before approval.";
   }
 
   return {
@@ -144,7 +167,14 @@ export function findConflict(bookings, candidate, options = {}) {
 }
 
 export function hasScheduleConflict(left, right) {
-  if (left.travelDate !== right.travelDate) {
+  const leftRange = getDateRange(left);
+  const rightRange = getDateRange(right);
+
+  if (!leftRange || !rightRange) {
+    return false;
+  }
+
+  if (leftRange.start > rightRange.end || rightRange.start > leftRange.end) {
     return false;
   }
 
@@ -188,16 +218,35 @@ function isValidDate(value) {
   return !Number.isNaN(timestamp);
 }
 
+function getDateRange(booking) {
+  const start = normalizeText(booking.fromDate || booking.travelDate);
+  const end = normalizeText(booking.toDate || booking.travelDate);
+
+  if (!isValidDate(start) || !isValidDate(end)) {
+    return null;
+  }
+
+  if (end < start) {
+    return null;
+  }
+
+  return { start, end };
+}
+
 function isValidEmail(value) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 }
 
 function isValidPhone(value) {
-  return /^[+\d][\d\s()-]{6,}$/.test(value);
+  return /^0\d{9}$/.test(value);
 }
 
 function normalizeText(value) {
   return String(value || "").trim();
+}
+
+function normalizePhone(value) {
+  return String(value || "").replace(/\D/g, "").slice(0, 10);
 }
 
 function currentDateString() {

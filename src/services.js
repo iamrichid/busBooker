@@ -1,6 +1,5 @@
 import {
   buildBookingRecord,
-  findConflict,
   getBookingTypeLabel,
   getTimeSlotLabel,
   sanitizeDecisionInput,
@@ -10,6 +9,7 @@ import {
   notifyBookingDecision,
   notifyBookingSubmitted,
 } from "./notifications.js";
+import { findVehicleById, getAvailableVehicles, getFleet, getVehicleDisplay } from "./fleet.js";
 import { HttpError } from "./http.js";
 import { readBookings, saveBooking } from "./storage.js";
 
@@ -22,16 +22,7 @@ export async function submitBookingRequest(input) {
     });
   }
 
-  const bookings = await readBookings();
   const booking = buildBookingRecord(validation.value);
-  const conflict = findConflict(bookings, booking, { statuses: ["approved"] });
-
-  if (conflict) {
-    throw new HttpError(409, `The bus is already booked for ${formatSlot(conflict)}.`, {
-      conflict,
-    });
-  }
-
   await saveBooking(booking);
 
   const notificationSummary = await notifyBookingSubmitted(booking);
@@ -48,12 +39,21 @@ export async function submitBookingRequest(input) {
 
 export async function listBookingsForAdmin() {
   const bookings = await readBookings();
+  const fleet = getFleet();
+  const decoratedBookings = bookings.map((booking) => ({
+    ...booking,
+    availableVehicles:
+      booking.status === "pending"
+        ? getAvailableVehicles(bookings, booking, fleet, { excludeId: booking.id })
+        : [],
+  }));
 
   return {
     body: {
-      bookings: [...bookings].sort((left, right) =>
+      bookings: [...decoratedBookings].sort((left, right) =>
         right.submittedAt.localeCompare(left.submittedAt),
       ),
+      fleet,
     },
     statusCode: 200,
   };
@@ -73,6 +73,7 @@ export async function processAdminDecision(id, input) {
   }
 
   const bookings = await readBookings();
+  const fleet = getFleet();
   const current = bookings.find((booking) => booking.id === id);
 
   if (!current) {
@@ -86,22 +87,41 @@ export async function processAdminDecision(id, input) {
   }
 
   if (decision.value.decision === "approved") {
-    const conflict = findConflict(bookings, current, {
+    const selectedVehicle = findVehicleById(decision.value.selectedVehicleId, fleet);
+
+    if (!selectedVehicle) {
+      throw new HttpError(400, "Please choose a valid bus assignment.", {
+        fields: {
+          selectedVehicleId: "The selected bus is not available.",
+        },
+      });
+    }
+
+    const availableVehicles = getAvailableVehicles(bookings, current, fleet, {
       excludeId: current.id,
-      statuses: ["approved"],
     });
 
-    if (conflict) {
+    if (!availableVehicles.some((vehicle) => vehicle.id === selectedVehicle.id)) {
       throw new HttpError(
         409,
-        `Approval blocked because the bus is already booked for ${formatSlot(conflict)}.`,
-        { conflict },
+        `Approval blocked because ${getVehicleDisplay(selectedVehicle)} is already booked for ${formatSlot(current)}.`,
+        {
+          fields: {
+            selectedVehicleId: "This bus is no longer available for the selected date and slot.",
+          },
+        },
       );
     }
   }
 
   const updated = {
     ...current,
+    assignedVehicleId:
+      decision.value.decision === "approved" ? decision.value.selectedVehicleId : current.assignedVehicleId || "",
+    assignedVehicleLabel:
+      decision.value.decision === "approved"
+        ? getVehicleDisplay(findVehicleById(decision.value.selectedVehicleId, fleet))
+        : current.assignedVehicleLabel || "",
     adminNotes: decision.value.adminNotes,
     processedAt: new Date().toISOString(),
     processedBy: decision.value.adminName,
@@ -125,6 +145,9 @@ export async function processAdminDecision(id, input) {
 function formatSlot(booking) {
   const timeSlotLabel =
     booking.bookingType === "half_day" ? `, ${getTimeSlotLabel(booking.timeSlot)}` : "";
+  const fromDate = booking.fromDate || booking.travelDate;
+  const toDate = booking.toDate || booking.travelDate;
+  const dateLabel = fromDate === toDate ? fromDate : `${fromDate} to ${toDate}`;
 
-  return `${booking.travelDate} (${getBookingTypeLabel(booking.bookingType)}${timeSlotLabel})`;
+  return `${dateLabel} (${getBookingTypeLabel(booking.bookingType)}${timeSlotLabel})`;
 }

@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Request Church Bus</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Manrope:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ["Manrope", "Segoe UI", "Helvetica Neue", "Arial", "sans-serif"],
+              display: ["Fraunces", "Georgia", "serif"],
+            },
+            colors: {
+              navy: "#11274a",
+            },
+          },
+        },
+      };
+    </script>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body class="member-shell request-page font-sans antialiased text-slate-900 bg-white">
+    <main class="page page-member">
+      <section class="request-topbar">
+        <a href="/" class="ghost-button">Back to Home</a>
+        <div>
+          <p class="eyebrow">Booking Request</p>
+          <h1 class="font-display">Church Bus Request Form</h1>
+        </div>
+      </section>
+
+      <section class="request-layout">
+        <aside class="request-sidebar">
+          <h2>Before You Submit</h2>
+          <ul>
+            <li>This form is for members only.</li>
+            <li>Provide at least one contact method.</li>
+            <li>Requests are only final after admin approval.</li>
+          </ul>
+          <p>
+            Need to book quickly? Complete all required fields and avoid abbreviations in event and destination
+            names.
+          </p>
+        </aside>
+
+        <section class="panel request-panel">
+          <p class="panel-copy request-intro">
+            Fill in the trip details below and the transport team will review the request before approval.
+          </p>
+
+          <form id="booking-form" class="booking-form" novalidate>
+            <div class="full-width request-section">
+              <h2>Member Details</h2>
+              <p>Only active church members can submit this transport request.</p>
+            </div>
+
+            <label>
+              <span>Are you a church member?</span>
+              <select id="memberStatus" name="memberStatus" required>
+                <option value="yes">Yes, I am a member</option>
+                <option value="no">No</option>
+              </select>
+              <small data-error-for="memberStatus"></small>
+            </label>
+
+            <label id="membershipNumberWrap">
+              <span>Membership number</span>
+              <input
+                name="membershipNumber"
+                type="text"
+                maxlength="32"
+                autocomplete="off"
+                placeholder="Enter membership number"
+              />
+              <small data-error-for="membershipNumber"></small>
+            </label>
+
+            <label>
+              <span>Full name</span>
+              <input name="requesterName" type="text" autocomplete="name" placeholder="Martha Owusu" required />
+              <small data-error-for="requesterName"></small>
+            </label>
+
+            <label>
+              <span>Ministry or department</span>
+              <input
+                name="ministryName"
+                type="text"
+                autocomplete="organization"
+                placeholder="Youth Ministry"
+                required
+              />
+              <small data-error-for="ministryName"></small>
+            </label>
+
+            <label>
+              <span>Email address</span>
+              <input
+                id="requesterEmail"
+                name="requesterEmail"
+                type="email"
+                inputmode="email"
+                autocomplete="email"
+                placeholder="member@yourchurch.org"
+              />
+              <small data-error-for="requesterEmail"></small>
+            </label>
+
+            <label>
+              <span>Phone number</span>
+              <input
+                id="phone"
+                name="phone"
+                type="tel"
+                inputmode="numeric"
+                maxlength="10"
+                autocomplete="tel"
+                placeholder="0241234567"
+              />
+              <small data-error-for="phone"></small>
+            </label>
+
+            <div class="full-width request-section">
+              <h2>Trip Details</h2>
+              <p>Add complete event and schedule details to speed up approval.</p>
+            </div>
+
+            <label>
+              <span>Event name</span>
+              <input name="eventName" type="text" placeholder="Choir outreach" required />
+              <small data-error-for="eventName"></small>
+            </label>
+
+            <label>
+              <span>Purpose of trip</span>
+              <textarea name="purpose" rows="3" placeholder="Describe why the bus is needed." required></textarea>
+              <small data-error-for="purpose"></small>
+            </label>
+
+            <label>
+              <span>From date</span>
+              <input id="fromDate" name="fromDate" type="date" required />
+              <small data-error-for="fromDate"></small>
+            </label>
+
+            <label>
+              <span>To date</span>
+              <input id="toDate" name="toDate" type="date" required />
+              <small data-error-for="toDate"></small>
+            </label>
+
+            <label>
+              <span>Booking type</span>
+              <select id="bookingType" name="bookingType" required>
+                <option value="half_day">Half day</option>
+                <option value="full_day">Full day</option>
+              </select>
+              <small data-error-for="bookingType"></small>
+            </label>
+
+            <label id="timeSlotWrap">
+              <span>Half-day slot</span>
+              <select id="timeSlot" name="timeSlot" required>
+                <option value="morning">Morning</option>
+                <option value="afternoon">Afternoon</option>
+              </select>
+              <small data-error-for="timeSlot"></small>
+            </label>
+
+            <label>
+              <span>Pickup location</span>
+              <input name="pickupLocation" type="text" placeholder="Church auditorium" required />
+              <small data-error-for="pickupLocation"></small>
+            </label>
+
+            <label>
+              <span>Destination</span>
+              <input name="destination" type="text" placeholder="Kasoa prayer center" required />
+              <small data-error-for="destination"></small>
+            </label>
+
+            <label class="full-width">
+              <span>Extra notes</span>
+              <textarea name="notes" rows="3" placeholder="Add any timing or coordination notes (optional)."></textarea>
+            </label>
+
+            <div class="full-width form-actions">
+              <button id="submitButton" class="primary-button" type="submit">Submit request</button>
+              <a href="/" class="ghost-button">Cancel</a>
+            </div>
+
+            <p class="full-width helper-text">Provide at least one contact method: email or 10-digit Ghana phone.</p>
+
+            <div id="formMessage" class="full-width form-message" aria-live="polite"></div>
+          </form>
+        </section>
+      </section>
+    </main>
+
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>

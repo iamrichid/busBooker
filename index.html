@@ -5,150 +5,99 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Church Bus Booker</title>
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Manrope:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ["Manrope", "Segoe UI", "Helvetica Neue", "Arial", "sans-serif"],
+              display: ["Fraunces", "Georgia", "serif"],
+            },
+            colors: {
+              navy: "#11274a",
+            },
+          },
+        },
+      };
+    </script>
     <link rel="stylesheet" href="/styles.css" />
   </head>
-  <body class="member-shell">
-    <main class="page">
-      <section class="hero">
-        <div class="hero-copy">
-          <div class="simple-brand">
-            <img
-              src="/pcg-logo.png"
-              alt="Presbyterian Church of Ghana logo"
-              class="simple-brand-logo"
-            />
-            <div>
-              <p class="simple-brand-name">Presbyterian Church of Ghana</p>
-              <p class="simple-brand-role">Church Transport Desk</p>
-            </div>
-          </div>
-          <p class="eyebrow">Transport Desk</p>
-          <h1>Book the church bus simply and ahead of time.</h1>
-          <p class="hero-text">
-            Members can request the bus for ministry work, fellowship events, outreach, and special programs.
-            Every request is reviewed by the transport team before it is approved.
+  <body class="member-shell font-sans antialiased text-slate-900 bg-white">
+    <main class="page page-member">
+      <section class="landing-hero">
+        <div class="landing-copy">
+          <p class="eyebrow">Christ Adenta Presby Transport</p>
+          <h1 class="font-display text-4xl leading-tight text-slate-900 md:text-5xl">Church Bus Reservation Booker Online.</h1>
+          <p class="hero-text text-base leading-7 text-slate-600">
+            Members request the bus once, the transport team reviews it, and approved trips stay orderly.
+            Clean, simple, and ready for official church activities.
           </p>
-          <div class="rule-strip">
-            <span>One bus only</span>
-            <span>Half day or full day</span>
-            <span>Email and SMS updates</span>
+
+          <ul class="landing-points" aria-label="Booking highlights">
+            <li>Single request form for half-day and full-day trips</li>
+            <li>Admin approval with bus assignment before confirmation</li>
+            <li>Clear status updates after processing</li>
+          </ul>
+
+          <div class="hero-actions items-center gap-4">
+            <button
+              id="openBookingButton"
+              class="primary-button rounded-lg px-6 py-3 text-sm font-semibold tracking-tight"
+              type="button"
+              data-open-booking
+            >
+              Request the bus
+            </button>
+            <p class="action-note text-sm text-slate-500">The form opens as a guided request sheet.</p>
           </div>
+
+          <div id="pageNotice" class="form-message page-notice" aria-live="polite" hidden></div>
         </div>
-        <aside class="hero-card">
-          <h2>How it works</h2>
-          <ol>
-            <li>Submit your trip request with the date and slot.</li>
-            <li>Transport admins review the request.</li>
-            <li>You receive a confirmation update after the decision is made.</li>
-          </ol>
+
+        <aside class="landing-media">
+          <img
+            src="https://images.unsplash.com/photo-1570125909232-eb263c188f7e?auto=format&fit=crop&w=1400&q=80"
+            alt="Church bus parked outdoors"
+            class="hero-bus-image"
+          />
+          <p class="landing-media-note">Dependable transport for ministry, outreach, and fellowship events.</p>
         </aside>
       </section>
 
-      <section class="panel">
-        <div class="panel-heading">
-          <div>
-            <p class="eyebrow">Bus Request Form</p>
-            <h2>Book the church bus</h2>
-            <p class="panel-copy">
-              Use this form for official church travel, ministry outreach, rehearsals, conferences, and approved
-              fellowship activities.
-            </p>
-          </div>
-          <a class="admin-link" href="/admin">Admin approval desk</a>
-        </div>
-
-        <form id="booking-form" class="booking-form">
-          <label>
-            <span>Full name</span>
-            <input name="requesterName" type="text" placeholder="Martha Owusu" required />
-            <small data-error-for="requesterName"></small>
-          </label>
-
-          <label>
-            <span>Ministry or department</span>
-            <input name="ministryName" type="text" placeholder="Youth Ministry" required />
-            <small data-error-for="ministryName"></small>
-          </label>
-
-          <label>
-            <span>Email address</span>
-            <input name="requesterEmail" type="email" placeholder="member@yourchurch.org" />
-            <small data-error-for="requesterEmail"></small>
-          </label>
-
-          <label>
-            <span>Phone number</span>
-            <input name="phone" type="tel" placeholder="+233 24 123 4567" />
-            <small data-error-for="phone"></small>
-          </label>
-
-          <label>
-            <span>Event name</span>
-            <input name="eventName" type="text" placeholder="Choir outreach" required />
-            <small data-error-for="eventName"></small>
-          </label>
-
-          <label>
-            <span>Purpose of trip</span>
-            <textarea name="purpose" rows="3" placeholder="Describe why the bus is needed." required></textarea>
-            <small data-error-for="purpose"></small>
-          </label>
-
-          <label>
-            <span>Date needed</span>
-            <input id="travelDate" name="travelDate" type="date" required />
-            <small data-error-for="travelDate"></small>
-          </label>
-
-          <label>
-            <span>Booking type</span>
-            <select id="bookingType" name="bookingType" required>
-              <option value="half_day">Half day</option>
-              <option value="full_day">Full day</option>
-            </select>
-            <small data-error-for="bookingType"></small>
-          </label>
-
-          <label id="timeSlotWrap">
-            <span>Half-day slot</span>
-            <select id="timeSlot" name="timeSlot" required>
-              <option value="morning">Morning</option>
-              <option value="afternoon">Afternoon</option>
-            </select>
-            <small data-error-for="timeSlot"></small>
-          </label>
-
-          <label>
-            <span>Pickup location</span>
-            <input name="pickupLocation" type="text" placeholder="Church auditorium" required />
-            <small data-error-for="pickupLocation"></small>
-          </label>
-
-          <label>
-            <span>Destination</span>
-            <input name="destination" type="text" placeholder="Kasoa prayer center" required />
-            <small data-error-for="destination"></small>
-          </label>
-
-          <label>
-            <span>Expected passengers</span>
-            <input name="passengerCount" type="number" min="1" max="60" placeholder="24" required />
-            <small data-error-for="passengerCount"></small>
-          </label>
-
-          <label class="full-width">
-            <span>Extra notes</span>
-            <textarea name="notes" rows="3" placeholder="Add any timing or coordination notes."></textarea>
-          </label>
-
-          <div class="full-width form-actions">
-            <button id="submitButton" type="submit">Submit request</button>
-            <p class="helper-text">Provide either an email or phone number. Your request stays pending until a transport admin reviews it.</p>
-          </div>
-
-          <div id="formMessage" class="full-width form-message" aria-live="polite"></div>
-        </form>
+      <section class="landing-flow" aria-label="How bus booking works">
+        <h2 class="font-display">How It Works</h2>
+        <ol class="flow-steps">
+          <li>
+            <span class="flow-step-number">1</span>
+            <div>
+              <h3>Submit Request</h3>
+              <p>Fill in your church event details, trip date, and destination.</p>
+            </div>
+          </li>
+          <li>
+            <span class="flow-step-number">2</span>
+            <div>
+              <h3>Admin Review</h3>
+              <p>Transport admins review schedule fit and assign an available bus.</p>
+            </div>
+          </li>
+          <li>
+            <span class="flow-step-number">3</span>
+            <div>
+              <h3>Get Decision</h3>
+              <p>Your request is approved or declined with feedback from the desk.</p>
+            </div>
+          </li>
+        </ol>
       </section>
+
     </main>
 
     <script type="module" src="/app.js"></script>

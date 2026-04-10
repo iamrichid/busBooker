@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 760" role="img" aria-labelledby="title desc">
+  <title id="title">Church Bus</title>
+  <desc id="desc">A clean side view illustration of a church bus.</desc>
+  <rect width="1200" height="760" fill="#f8f6f1" />
+  <rect x="84" y="190" width="1030" height="360" rx="38" fill="#11274a" />
+  <rect x="120" y="228" width="760" height="200" rx="24" fill="#ffffff" />
+  <rect x="898" y="228" width="178" height="200" rx="24" fill="#e7ebf3" />
+  <rect x="136" y="244" width="134" height="160" rx="14" fill="#deecff" />
+  <rect x="284" y="244" width="134" height="160" rx="14" fill="#deecff" />
+  <rect x="432" y="244" width="134" height="160" rx="14" fill="#deecff" />
+  <rect x="580" y="244" width="134" height="160" rx="14" fill="#deecff" />
+  <rect x="728" y="244" width="134" height="160" rx="14" fill="#deecff" />
+  <rect x="922" y="244" width="130" height="160" rx="14" fill="#cfdae8" />
+  <rect x="130" y="448" width="920" height="64" rx="22" fill="#dfc678" />
+  <rect x="170" y="466" width="300" height="28" rx="12" fill="#f8f2df" />
+  <text x="185" y="486" font-size="28" font-family="Segoe UI, Arial, sans-serif" fill="#11274a">CHRIST ADENTA PRESBY</text>
+  <circle cx="280" cy="586" r="88" fill="#1a1f2c" />
+  <circle cx="280" cy="586" r="42" fill="#d3d8e4" />
+  <circle cx="924" cy="586" r="88" fill="#1a1f2c" />
+  <circle cx="924" cy="586" r="42" fill="#d3d8e4" />
+  <rect x="70" y="562" width="1060" height="16" rx="8" fill="#d6d0c5" />
+</svg>

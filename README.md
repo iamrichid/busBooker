@@ -5,8 +5,10 @@ A lightweight booking and approval system for a church with one shared bus, now 
 ## What it does
 
 - Lets church members request the bus for a half day or full day
+- Requires a membership number on member bookings
 - Stores requests durably in Vercel Blob when `BLOB_READ_WRITE_TOKEN` is set
 - Falls back to local storage in `data/bookings.json` during local development
+- Lets admins assign an available bus before approving a request
 - Gives admins a simple approval screen at `/admin`
 - Sends optional email notifications with Resend
 - Sends optional SMS notifications with Twilio
@@ -38,6 +40,7 @@ npm start
 ```bash
 ADMIN_ACCESS_CODE=your-private-admin-code
 BLOB_READ_WRITE_TOKEN=your-vercel-blob-read-write-token
+BUS_FLEET=Church Bus|PCG-001
 NOTIFICATION_FROM_EMAIL=transport@yourchurch.org
 RESEND_API_KEY=...
 TWILIO_ACCOUNT_SID=...
@@ -83,6 +86,8 @@ If notification credentials are not configured, the app still works and logs ski
 ## Notes
 
 - This is intentionally simple and uses a single admin access code for the approval page.
-- Requests are blocked only when they clash with an already approved booking.
+- The public booking form is for church members only and requires a membership number.
+- Ghana phone numbers are validated as 10 digits.
+- A request can only be approved after an available bus has been assigned.
 - On Vercel, each booking is stored as a private JSON blob version so updates stay durable without depending on the function filesystem.
 - For a low-volume church workflow, Blob storage is a practical lightweight option, but it is still object storage, not a relational database.

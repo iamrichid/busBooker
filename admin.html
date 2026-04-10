@@ -5,98 +5,202 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Bus Booker Admin</title>
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Manrope:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ["Manrope", "Segoe UI", "Helvetica Neue", "Arial", "sans-serif"],
+              display: ["Fraunces", "Georgia", "serif"],
+            },
+            colors: {
+              navy: "#11274a",
+            },
+          },
+        },
+      };
+    </script>
     <link rel="stylesheet" href="/styles.css" />
   </head>
-  <body class="admin-shell">
-    <main class="page admin-page">
-      <section class="panel admin-panel">
-        <div class="panel-heading">
-          <div>
-            <div class="simple-brand simple-brand-admin">
-              <img
-                src="/pcg-logo.png"
-                alt="Presbyterian Church of Ghana logo"
-                class="simple-brand-logo"
-              />
-              <div>
-                <p class="simple-brand-name">Presbyterian Church of Ghana</p>
-                <p class="simple-brand-role">Transport Approval Desk</p>
-              </div>
+  <body class="admin-shell font-sans antialiased text-slate-900 bg-white">
+    <main class="page page-admin">
+      <header class="site-bar">
+        <a class="brand-lockup" href="/">
+          <img src="/pcg-logo.png" alt="Presbyterian Church of Ghana logo" class="brand-logo" />
+          <div class="brand-copy">
+            <p class="brand-name text-navy font-semibold tracking-tight">Presbyterian Church of Ghana</p>
+            <p class="brand-role text-sm text-slate-600">Transport Approval Desk</p>
+          </div>
+        </a>
+        <a class="admin-link" href="/">Member booking</a>
+      </header>
+
+      <section class="admin-stage">
+        <div class="hero-copy admin-copy">
+          <p class="eyebrow">Admin Access</p>
+          <h1 class="font-display text-4xl leading-tight text-slate-900">Sign in to manage bus requests properly.</h1>
+          <p class="hero-text text-base leading-7 text-slate-600">
+            Review requests in a single table, check the full details in a modal, and approve only after assigning an
+            available bus.
+          </p>
+
+          <div class="feature-stack">
+            <article class="inline-card">
+              <span class="feature-label">Secure entry</span>
+              <strong>Admin access code required</strong>
+            </article>
+            <article class="inline-card">
+              <span class="feature-label">Review flow</span>
+              <strong>Open request, inspect details, then approve or decline</strong>
+            </article>
+          </div>
+        </div>
+
+        <section id="authPanel" class="auth-panel">
+          <form id="adminSignInForm" class="auth-form">
+            <div>
+              <p class="eyebrow">Sign In</p>
+              <h2 class="font-display text-3xl leading-tight text-slate-900">Open the approval desk</h2>
             </div>
-            <p class="eyebrow">Approval Desk</p>
-            <h1>Review bus requests</h1>
+
+            <label>
+              <span>Admin access code</span>
+              <input id="adminAccessCode" type="password" placeholder="Enter access code" />
+            </label>
+
+            <label>
+              <span>Admin name</span>
+              <input id="adminName" type="text" placeholder="Transport secretary" />
+            </label>
+
+            <button id="signInButton" class="primary-button" type="submit">Sign in</button>
+            <p class="helper-text">Use the secure code configured for this church deployment.</p>
+          </form>
+        </section>
+      </section>
+
+      <div id="adminMessage" class="form-message" aria-live="polite"></div>
+
+      <section id="adminWorkspace" class="panel admin-workspace" hidden>
+        <div class="workspace-head">
+          <div>
+            <p class="eyebrow">Approval Workspace</p>
+            <h2 class="font-display text-3xl leading-tight text-slate-900">Manage booking requests</h2>
             <p class="panel-copy">
-              Approve only the trips that fit the church schedule and available bus slot for the selected date.
+              Signed in as <strong id="activeAdminName">Transport secretary</strong>.
             </p>
           </div>
-          <a class="admin-link" href="/">Member request form</a>
+
+          <div class="workspace-actions">
+            <button id="refreshBookingsButton" class="ghost-button" type="button">Refresh</button>
+            <button id="logoutButton" class="ghost-button" type="button">Log out</button>
+          </div>
         </div>
 
-        <div class="admin-login">
-          <label>
-            <span>Admin access code</span>
-            <input id="adminAccessCode" type="password" placeholder="Enter access code" />
-          </label>
-          <label>
-            <span>Admin name</span>
-            <input id="adminName" type="text" placeholder="Transport secretary" />
-          </label>
-          <button id="loadBookingsButton" type="button">Load requests</button>
+        <div class="summary-grid">
+          <article class="summary-card summary-card-primary">
+            <span class="summary-label">Pending</span>
+            <strong id="summaryPending">0</strong>
+          </article>
+          <article class="summary-card">
+            <span class="summary-label">Approved</span>
+            <strong id="summaryApproved">0</strong>
+          </article>
+          <article class="summary-card">
+            <span class="summary-label">Declined</span>
+            <strong id="summaryDeclined">0</strong>
+          </article>
         </div>
 
-        <div id="adminMessage" class="form-message" aria-live="polite"></div>
-
-        <section class="admin-grid">
-          <div>
-            <div class="section-title">
-              <h2>Pending</h2>
-              <span id="pendingCount" class="count-pill">0</span>
-            </div>
-            <div id="pendingList" class="request-list"></div>
+        <section class="request-table-panel">
+          <div class="section-title">
+            <h3 class="font-display text-2xl leading-tight text-slate-900">All requests</h3>
+            <span id="requestTableCount" class="count-pill">0</span>
           </div>
 
-          <div>
-            <div class="section-title">
-              <h2>Approved</h2>
-              <span id="approvedCount" class="count-pill">0</span>
-            </div>
-            <div id="approvedList" class="request-list"></div>
-          </div>
-
-          <div>
-            <div class="section-title">
-              <h2>Declined</h2>
-              <span id="declinedCount" class="count-pill">0</span>
-            </div>
-            <div id="declinedList" class="request-list"></div>
+          <div class="request-table-wrap">
+            <table class="request-table">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Member</th>
+                  <th>Ministry</th>
+                  <th>Booking</th>
+                  <th>Status</th>
+                  <th>Assigned bus</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="requestTableBody"></tbody>
+            </table>
           </div>
         </section>
       </section>
     </main>
 
-    <template id="bookingCardTemplate">
-      <article class="booking-card">
-        <div class="booking-card-top">
+    <dialog id="requestModal" class="booking-dialog request-modal" aria-labelledby="requestModalTitle">
+      <div class="dialog-shell request-modal-shell">
+        <div class="dialog-head">
           <div>
-            <p class="booking-meta"></p>
-            <h3></h3>
+            <p class="eyebrow">Request Details</p>
+            <h2 id="requestModalTitle" class="font-display text-3xl leading-tight text-slate-900">Booking request</h2>
+            <p id="requestModalMeta" class="panel-copy"></p>
           </div>
-          <span class="status-badge"></span>
+          <button id="closeRequestModalButton" class="icon-button" type="button" aria-label="Close request details">
+            ×
+          </button>
         </div>
 
-        <dl class="booking-details"></dl>
+        <div class="request-modal-grid">
+          <section class="request-modal-card">
+            <dl id="requestModalDetails" class="booking-details request-modal-details"></dl>
+          </section>
 
-        <div class="decision-block">
-          <label>
-            <span>Admin note</span>
-            <textarea rows="3" placeholder="Optional note to the requester"></textarea>
-          </label>
-          <div class="decision-actions">
-            <button type="button" data-action="approve">Approve</button>
-            <button type="button" data-action="decline" class="ghost-button">Decline</button>
-          </div>
+          <section class="request-modal-card">
+            <div id="requestModalDecisionPanel" class="decision-block modal-decision-block">
+              <label class="vehicle-field">
+                <span>Assign bus</span>
+                <select id="requestModalVehicleSelect">
+                  <option value="">Select available bus</option>
+                </select>
+                <small id="requestModalVehicleError"></small>
+              </label>
+              <label>
+                <span>Admin note</span>
+                <textarea id="requestModalAdminNote" rows="4" placeholder="Optional note to the requester"></textarea>
+              </label>
+              <div class="decision-actions">
+                <button id="requestModalApproveButton" type="button" class="primary-button">Approve</button>
+                <button id="requestModalDeclineButton" type="button" class="ghost-button">Decline</button>
+              </div>
+            </div>
+
+            <div id="requestModalProcessedPanel" class="request-processed-panel" hidden>
+              <p class="feature-label">Processed request</p>
+              <p id="requestModalProcessedText" class="panel-copy"></p>
+            </div>
+          </section>
         </div>
-      </article>
+      </div>
+    </dialog>
+
+    <template id="requestRowTemplate">
+      <tr>
+        <td data-col="date"></td>
+        <td data-col="member"></td>
+        <td data-col="ministry"></td>
+        <td data-col="booking"></td>
+        <td data-col="status"></td>
+        <td data-col="vehicle"></td>
+        <td data-col="actions"></td>
+      </tr>
     </template>
 
     <script type="module" src="/admin.js"></script>
