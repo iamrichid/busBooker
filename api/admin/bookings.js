@@ -3,9 +3,15 @@ import { listBookingsForAdmin } from "../../src/services.js";
 
 export async function GET(request) {
   try {
-    assertAdminAccess(request.headers);
+    const session = assertAdminAccess(request.headers);
     const result = await listBookingsForAdmin();
-    return json(result.body, result.statusCode);
+    return json(
+      {
+        ...result.body,
+        adminName: session.adminName,
+      },
+      result.statusCode,
+    );
   } catch (error) {
     return handleError(error);
   }

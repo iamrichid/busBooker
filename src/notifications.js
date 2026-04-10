@@ -3,10 +3,11 @@ import { appendNotificationLog } from "./storage.js";
 const resendEndpoint = "https://api.resend.com/emails";
 
 export async function notifyBookingSubmitted(booking) {
+  const dateLabel = getDateLabel(booking);
   const message = [
     `Hello ${booking.requesterName},`,
     "",
-    `Your bus request for ${booking.travelDate} has been submitted successfully and is now waiting for approval.`,
+    `Your bus request for ${dateLabel} has been submitted successfully and is now waiting for approval.`,
     `Booking type: ${booking.bookingType === "full_day" ? "Full day" : `Half day (${booking.timeSlot})`}`,
     `Event: ${booking.eventName}`,
     "",
@@ -23,10 +24,11 @@ export async function notifyBookingSubmitted(booking) {
 
 export async function notifyBookingDecision(booking) {
   const wasApproved = booking.status === "approved";
+  const dateLabel = getDateLabel(booking);
   const message = [
     `Hello ${booking.requesterName},`,
     "",
-    `Your church bus request for ${booking.travelDate} has been ${wasApproved ? "approved" : "declined"}.`,
+    `Your church bus request for ${dateLabel} has been ${wasApproved ? "approved" : "declined"}.`,
     `Event: ${booking.eventName}`,
     booking.adminNotes ? `Admin note: ${booking.adminNotes}` : null,
     "",
@@ -162,4 +164,15 @@ async function sendSms({ booking, message }) {
       reason: error.message,
     };
   }
+}
+
+function getDateLabel(booking) {
+  const fromDate = booking.fromDate || booking.travelDate;
+  const toDate = booking.toDate || booking.travelDate;
+
+  if (!fromDate || !toDate) {
+    return "the selected date";
+  }
+
+  return fromDate === toDate ? fromDate : `${fromDate} to ${toDate}`;
 }

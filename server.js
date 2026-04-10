@@ -4,7 +4,15 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { loadEnvFile } from "./src/env.js";
-import { HttpError, assertAdminAccess } from "./src/http.js";
+import {
+  HttpError,
+  assertAdminAccess,
+  authenticateAdminCredentials,
+  buildAdminSessionCookie,
+  clearAdminSessionCookie,
+  createAdminSession,
+  shouldUseSecureCookies,
+} from "./src/http.js";
 import {
   listBookingsForAdmin,
   processAdminDecision,
@@ -75,9 +83,12 @@ const server = createServer(async (request, response) => {
         throw new HttpError(405, "Method not allowed.");
       }
 
-      assertAdminAccess(request.headers);
+      const session = assertAdminAccess(request.headers);
       const result = await listBookingsForAdmin();
-      return sendJson(response, result.statusCode, result.body);
+      return sendJson(response, result.statusCode, {
+        ...result.body,
+        adminName: session.adminName,
+      });
     }
 
     if (pathname === "/api/admin/bookings/decision") {
@@ -85,10 +96,58 @@ const server = createServer(async (request, response) => {
         throw new HttpError(405, "Method not allowed.");
       }
 
-      assertAdminAccess(request.headers);
+      const session = assertAdminAccess(request.headers);
       const body = await readJsonBody(request);
-      const result = await processAdminDecision(url.searchParams.get("id"), body);
+      const result = await processAdminDecision(url.searchParams.get("id"), {
+        ...body,
+        adminName: session.adminName,
+      });
       return sendJson(response, result.statusCode, result.body);
+    }
+
+    if (pathname === "/api/admin/session") {
+      const useSecureCookies = shouldUseSecureCookies(request.headers);
+
+      if (request.method === "POST") {
+        const body = await readJsonBody(request);
+        authenticateAdminCredentials(body.accessCode, body.adminName);
+        const token = createAdminSession(body.adminName);
+
+        return sendJson(
+          response,
+          200,
+          {
+            authenticated: true,
+            adminName: String(body.adminName || "").trim(),
+          },
+          {
+            "Set-Cookie": buildAdminSessionCookie(token, { secure: useSecureCookies }),
+          },
+        );
+      }
+
+      if (request.method === "GET") {
+        const session = assertAdminAccess(request.headers);
+        return sendJson(response, 200, {
+          authenticated: true,
+          adminName: session.adminName,
+        });
+      }
+
+      if (request.method === "DELETE") {
+        return sendJson(
+          response,
+          200,
+          {
+            authenticated: false,
+          },
+          {
+            "Set-Cookie": clearAdminSessionCookie({ secure: useSecureCookies }),
+          },
+        );
+      }
+
+      throw new HttpError(405, "Method not allowed.");
     }
 
     if (staticRoutes.has(pathname)) {
@@ -150,10 +209,11 @@ async function readJsonBody(request) {
   }
 }
 
-function sendJson(response, statusCode, payload) {
+function sendJson(response, statusCode, payload, extraHeaders = {}) {
   response.writeHead(statusCode, {
     "Cache-Control": "no-store",
     "Content-Type": "application/json; charset=utf-8",
+    ...extraHeaders,
   });
   response.end(JSON.stringify(payload));
 }

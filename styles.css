@@ -261,6 +261,29 @@ textarea {
   gap: 0.9rem;
 }
 
+.landing-identity {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+}
+
+.landing-identity-logo {
+  width: 54px;
+  height: 54px;
+  object-fit: cover;
+  object-position: left center;
+  border-radius: 8px;
+}
+
+.landing-identity p {
+  margin: 0;
+  max-width: 34ch;
+  color: var(--navy);
+  font-size: 0.95rem;
+  line-height: 1.2;
+  font-weight: 600;
+}
+
 .landing-copy .hero-text {
   margin-top: 0;
 }
@@ -295,6 +318,7 @@ textarea {
 .landing-media {
   display: grid;
   gap: 0.75rem;
+  justify-items: center;
 }
 
 .page-notice {
@@ -303,8 +327,10 @@ textarea {
 
 .landing-media-note {
   margin: 0;
-  font-size: 0.9rem;
-  color: var(--muted);
+  text-align: center;
+  font-size: 1.02rem;
+  color: var(--navy-soft);
+  font-weight: 500;
   line-height: 1.55;
 }
 
@@ -315,6 +341,7 @@ textarea {
 
 .landing-flow h2 {
   margin: 0;
+  text-align: center;
   font-size: clamp(1.45rem, 2.3vw, 1.95rem);
   line-height: 1.2;
 }
@@ -409,11 +436,33 @@ textarea {
 
 .hero-bus-image {
   width: min(100%, 500px);
-  height: auto;
+  height: clamp(280px, 36vw, 410px);
   border: 1px solid var(--border);
   border-radius: var(--surface-radius);
   background: var(--panel);
-  padding: 0.45rem;
+  object-fit: cover;
+  object-position: center;
+  transition: opacity 320ms ease-in-out;
+}
+
+.landing-cta {
+  justify-content: flex-start;
+}
+
+.landing-cta .action-note {
+  display: none;
+}
+
+.landing-cta-button {
+  min-height: 56px !important;
+  padding: 0.95rem 2.3rem !important;
+  background: #0e2f62 !important;
+  font-size: 1.05rem !important;
+  font-weight: 700 !important;
+}
+
+.landing-cta-button:hover {
+  background: #123c7a !important;
 }
 
 .feature-grid {
@@ -1036,6 +1085,19 @@ button:disabled {
   .booking-form,
   .request-modal-grid {
     grid-template-columns: 1fr;
+  }
+
+  .landing-identity {
+    align-items: flex-start;
+  }
+
+  .landing-identity-logo {
+    width: 44px;
+    height: 44px;
+  }
+
+  .landing-identity p {
+    font-size: 0.84rem;
   }
 
   .request-layout {

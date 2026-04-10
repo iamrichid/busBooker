@@ -33,7 +33,6 @@ const summaryNodes = {
 };
 
 const state = {
-  adminCode: localStorage.getItem("bus-booker-admin-code") || "",
   adminName: localStorage.getItem("bus-booker-admin-name") || "",
   authenticated: false,
   fleet: [],
@@ -41,7 +40,6 @@ const state = {
   activeBookingId: null,
 };
 
-adminAccessCodeInput.value = state.adminCode;
 adminNameInput.value = state.adminName;
 setAdminMessage("Sign in to open the approval desk.", "neutral");
 
@@ -66,9 +64,7 @@ document.addEventListener("keydown", (event) => {
   }
 });
 
-if (state.adminCode && state.adminName) {
-  signIn({ restoreSession: true });
-}
+restoreSession();
 
 async function handleSignIn(event) {
   event.preventDefault();
@@ -79,50 +75,73 @@ async function signIn({ restoreSession = false } = {}) {
   const adminCode = adminAccessCodeInput.value.trim();
   const adminName = adminNameInput.value.trim();
 
-  if (!adminCode) {
-    setAdminMessage("Please enter the admin access code.", "error");
-    return;
-  }
+  if (!restoreSession) {
+    if (!adminCode) {
+      setAdminMessage("Please enter the admin access code.", "error");
+      return;
+    }
 
-  if (!adminName) {
-    setAdminMessage("Please enter the admin name for this session.", "error");
-    return;
+    if (!adminName) {
+      setAdminMessage("Please enter the admin name for this session.", "error");
+      return;
+    }
   }
 
   setAuthBusy(true);
   setAdminMessage(restoreSession ? "Restoring admin session..." : "Signing in...", "neutral");
 
   try {
-    const response = await fetch("/api/admin/bookings", {
-      headers: {
-        "x-admin-key": adminCode,
-      },
-    });
+    if (restoreSession) {
+      const sessionResponse = await fetch("/api/admin/session");
+      const sessionResult = await sessionResponse.json();
+
+      if (!sessionResponse.ok) {
+        clearStoredSession();
+        setAdminMessage("Sign in to open the approval desk.", "neutral");
+        return;
+      }
+
+      state.adminName = sessionResult.adminName || state.adminName || "";
+    } else {
+      const sessionResponse = await fetch("/api/admin/session", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          accessCode: adminCode,
+          adminName,
+        }),
+      });
+      const sessionResult = await sessionResponse.json();
+
+      if (!sessionResponse.ok) {
+        setAdminMessage(sessionResult.error || "Could not sign in to the approval desk.", "error");
+        return;
+      }
+
+      state.adminName = sessionResult.adminName || adminName;
+    }
+
+    const response = await fetch("/api/admin/bookings");
     const result = await response.json();
 
     if (!response.ok) {
-      setAdminMessage(result.error || "Could not sign in to the approval desk.", "error");
-
-      if (restoreSession) {
-        clearStoredSession();
-      }
+      setAdminMessage(result.error || "Could not load admin bookings.", "error");
       return;
     }
 
-    state.adminCode = adminCode;
-    state.adminName = adminName;
     state.authenticated = true;
     state.fleet = result.fleet || [];
     state.bookings = result.bookings || [];
 
-    localStorage.setItem("bus-booker-admin-code", adminCode);
-    localStorage.setItem("bus-booker-admin-name", adminName);
+    localStorage.setItem("bus-booker-admin-name", state.adminName);
 
     authPanel.hidden = true;
     adminWorkspace.hidden = false;
-    activeAdminName.textContent = adminName;
+    activeAdminName.textContent = state.adminName;
     renderBookings(state.bookings);
-    setAdminMessage(`Signed in as ${adminName}.`, "success");
+    setAdminMessage(`Signed in as ${state.adminName}.`, "success");
   } catch (error) {
     setAdminMessage(error.message || "The server could not be reached.", "error");
   } finally {
@@ -139,14 +158,16 @@ async function loadBookings() {
   setAdminMessage("Refreshing booking requests...", "neutral");
 
   try {
-    const response = await fetch("/api/admin/bookings", {
-      headers: {
-        "x-admin-key": state.adminCode,
-      },
-    });
+    const response = await fetch("/api/admin/bookings");
     const result = await response.json();
 
     if (!response.ok) {
+      if (response.status === 401) {
+        await logout({ silent: true });
+        setAdminMessage("Your admin session has expired. Please sign in again.", "error");
+        return;
+      }
+
       setAdminMessage(result.error || "Could not load requests.", "error");
       return;
     }
@@ -172,9 +193,18 @@ async function loadBookings() {
   }
 }
 
-function logout() {
+async function logout(options = {}) {
+  const { silent = false } = options;
+
+  try {
+    await fetch("/api/admin/session", {
+      method: "DELETE",
+    });
+  } catch {
+    // ignore network errors on logout cleanup
+  }
+
   clearStoredSession();
-  state.adminCode = "";
   state.adminName = "";
   state.authenticated = false;
   state.fleet = [];
@@ -193,7 +223,9 @@ function logout() {
   });
   closeRequestModal();
 
-  setAdminMessage("Signed out of the approval desk.", "neutral");
+  if (!silent) {
+    setAdminMessage("Signed out of the approval desk.", "neutral");
+  }
 }
 
 function renderBookings(bookings) {
@@ -398,10 +430,8 @@ async function submitModalDecision(decision) {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "x-admin-key": state.adminCode,
       },
       body: JSON.stringify({
-        adminName: state.adminName,
         adminNotes: requestModalAdminNote.value,
         decision,
         selectedVehicleId: requestModalVehicleSelect.value,
@@ -411,6 +441,12 @@ async function submitModalDecision(decision) {
     const result = await response.json();
 
     if (!response.ok) {
+      if (response.status === 401) {
+        await logout({ silent: true });
+        setAdminMessage("Your admin session has expired. Please sign in again.", "error");
+        return;
+      }
+
       if (result.fields?.selectedVehicleId) {
         requestModalVehicleError.textContent = result.fields.selectedVehicleId;
       }
@@ -444,8 +480,15 @@ async function quickDecline(bookingId) {
 }
 
 function clearStoredSession() {
-  localStorage.removeItem("bus-booker-admin-code");
   localStorage.removeItem("bus-booker-admin-name");
+}
+
+async function restoreSession() {
+  if (state.adminName) {
+    adminNameInput.value = state.adminName;
+  }
+
+  await signIn({ restoreSession: true });
 }
 
 function setAuthBusy(isBusy) {

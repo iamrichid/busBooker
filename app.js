@@ -49,6 +49,7 @@ phoneInput?.addEventListener("input", sanitizePhoneInput);
 fromDateInput?.addEventListener("change", syncToDateWithFromDate);
 form?.addEventListener("submit", handleSubmit);
 bindLiveValidation();
+initHeroSlideshow();
 
 if (dialog) {
   dialog.addEventListener("click", (event) => {
@@ -179,12 +180,7 @@ function syncMembershipState() {
   if (!isMember) {
     membershipInput.value = "";
     clearErrorsForFields(["membershipNumber"]);
-    setMessage("External rentals are not handled through this form. Church members only.", "error");
-    submitButton.disabled = true;
-    return;
-  }
-
-  if (formMessage.dataset.tone === "error") {
+  } else if (formMessage?.dataset.tone === "error") {
     clearMessage();
   }
 
@@ -391,10 +387,6 @@ function validatePayload(payload) {
   const isMember = payload.memberStatus === "yes";
   const isFullDay = payload.bookingType === "full_day";
 
-  if (!isMember) {
-    errors.memberStatus = "Only church members can submit this request.";
-  }
-
   if (isMember && payload.membershipNumber.length < 3) {
     errors.membershipNumber = "Membership number is required for members.";
   }
@@ -496,4 +488,36 @@ function getFieldInput(field) {
   }
 
   return form.querySelector(`[name="${field}"]`);
+}
+
+function initHeroSlideshow() {
+  const image = document.querySelector("#heroBusImage");
+
+  if (!image) {
+    return;
+  }
+
+  let slides = [];
+
+  try {
+    slides = JSON.parse(image.dataset.slides || "[]");
+  } catch {
+    slides = [];
+  }
+
+  if (!Array.isArray(slides) || slides.length < 2) {
+    return;
+  }
+
+  let index = 0;
+
+  setInterval(() => {
+    index = (index + 1) % slides.length;
+    image.style.opacity = "0.28";
+
+    setTimeout(() => {
+      image.src = slides[index];
+      image.style.opacity = "1";
+    }, 200);
+  }, 4200);
 }

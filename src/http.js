@@ -1,3 +1,5 @@
+import { createHmac, timingSafeEqual } from "node:crypto";
+
 export class HttpError extends Error {
   constructor(statusCode, message, details = {}) {
     super(message);
@@ -7,13 +9,75 @@ export class HttpError extends Error {
   }
 }
 
-export function assertAdminAccess(requestHeaders) {
+const ADMIN_SESSION_COOKIE = "admin_session";
+const ADMIN_SESSION_TTL_SECONDS = 60 * 60 * 12;
+
+export function createAdminSession(adminName) {
+  const safeName = String(adminName || "").trim();
+  if (!safeName) {
+    throw new HttpError(400, "Admin name is required.");
+  }
+
+  const payload = {
+    exp: nowInSeconds() + ADMIN_SESSION_TTL_SECONDS,
+    name: safeName,
+  };
+
+  return encodeSignedSession(payload);
+}
+
+export function clearAdminSessionCookie(options = {}) {
+  const attributes = ["Path=/", "HttpOnly", "SameSite=Lax", "Max-Age=0"];
+  if (options.secure) {
+    attributes.push("Secure");
+  }
+
+  return `${ADMIN_SESSION_COOKIE}=; ${attributes.join("; ")}`;
+}
+
+export function buildAdminSessionCookie(sessionToken, options = {}) {
+  const attributes = ["Path=/", "HttpOnly", "SameSite=Lax", `Max-Age=${ADMIN_SESSION_TTL_SECONDS}`];
+  if (options.secure) {
+    attributes.push("Secure");
+  }
+
+  return `${ADMIN_SESSION_COOKIE}=${sessionToken}; ${attributes.join("; ")}`;
+}
+
+export function authenticateAdminCredentials(accessCode, adminName) {
   const adminAccessCode = process.env.ADMIN_ACCESS_CODE || "church-bus-2026";
-  const providedCode = readHeader(requestHeaders, "x-admin-key");
+  const providedCode = String(accessCode || "").trim();
+  const providedName = String(adminName || "").trim();
+
+  if (!providedCode) {
+    throw new HttpError(400, "Admin access code is required.", {
+      fields: {
+        accessCode: "Please enter the admin access code.",
+      },
+    });
+  }
+
+  if (!providedName) {
+    throw new HttpError(400, "Admin name is required.", {
+      fields: {
+        adminName: "Please enter the admin name for this session.",
+      },
+    });
+  }
 
   if (providedCode !== adminAccessCode) {
     throw new HttpError(401, "Invalid admin access code.");
   }
+}
+
+export function assertAdminAccess(requestHeaders) {
+  const session = readAdminSession(requestHeaders);
+
+  if (!session) {
+    throw new HttpError(401, "Admin authentication is required.");
+  }
+
+  return session;
 }
 
 export async function parseRequestJson(request) {
@@ -30,14 +94,55 @@ export async function parseRequestJson(request) {
   }
 }
 
-export function json(payload, statusCode = 200) {
+export function readAdminSession(requestHeaders) {
+  const cookieHeader = readHeader(requestHeaders, "cookie");
+  const token = readCookie(cookieHeader, ADMIN_SESSION_COOKIE);
+
+  if (!token) {
+    return null;
+  }
+
+  const payload = decodeSignedSession(token);
+  if (!payload || payload.exp <= nowInSeconds() || !payload.name) {
+    return null;
+  }
+
+  return {
+    adminName: payload.name,
+    expiresAt: payload.exp,
+  };
+}
+
+export function json(payload, statusCode = 200, extraHeaders = {}) {
   return new Response(JSON.stringify(payload), {
     headers: {
       "Cache-Control": "no-store",
       "Content-Type": "application/json; charset=utf-8",
+      ...extraHeaders,
     },
     status: statusCode,
   });
+}
+
+export function shouldUseSecureCookies(requestHeaders, requestUrl = "") {
+  const forwardedProto = readHeader(requestHeaders, "x-forwarded-proto");
+  if (forwardedProto) {
+    return String(forwardedProto).includes("https");
+  }
+
+  if (String(process.env.NODE_ENV || "").toLowerCase() === "production") {
+    return true;
+  }
+
+  try {
+    if (requestUrl) {
+      return new URL(requestUrl).protocol === "https:";
+    }
+  } catch {
+    // ignore invalid urls
+  }
+
+  return false;
 }
 
 export function handleError(error) {
@@ -65,4 +170,84 @@ function readHeader(headers, key) {
   }
 
   return headers[key];
+}
+
+function encodeSignedSession(payload) {
+  const encodedPayload = toBase64Url(JSON.stringify(payload));
+  const signature = signValue(encodedPayload);
+  return `${encodedPayload}.${signature}`;
+}
+
+function decodeSignedSession(token) {
+  const parts = String(token).split(".");
+  if (parts.length !== 2) {
+    return null;
+  }
+
+  const [encodedPayload, providedSignature] = parts;
+  const expectedSignature = signValue(encodedPayload);
+
+  if (!safeEqual(expectedSignature, providedSignature)) {
+    return null;
+  }
+
+  try {
+    const payloadJson = fromBase64Url(encodedPayload);
+    return JSON.parse(payloadJson);
+  } catch {
+    return null;
+  }
+}
+
+function signValue(value) {
+  const secret = process.env.ADMIN_SESSION_SECRET || process.env.ADMIN_ACCESS_CODE || "church-bus-2026";
+  return createHmac("sha256", secret).update(value).digest("base64url");
+}
+
+function safeEqual(left, right) {
+  const leftBuffer = Buffer.from(String(left));
+  const rightBuffer = Buffer.from(String(right));
+
+  if (leftBuffer.length !== rightBuffer.length) {
+    return false;
+  }
+
+  return timingSafeEqual(leftBuffer, rightBuffer);
+}
+
+function readCookie(cookieHeader, key) {
+  if (!cookieHeader) {
+    return "";
+  }
+
+  return String(cookieHeader)
+    .split(";")
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .reduce((value, pair) => {
+      if (value) {
+        return value;
+      }
+
+      const separator = pair.indexOf("=");
+      if (separator === -1) {
+        return "";
+      }
+
+      const name = pair.slice(0, separator).trim();
+      const cookieValue = pair.slice(separator + 1).trim();
+      return name === key ? cookieValue : "";
+    }, "");
+}
+
+function toBase64Url(value) {
+  return Buffer.from(value, "utf8").toString("base64url");
+}
+
+function fromBase64Url(value) {
+  return Buffer.from(value, "base64url").toString("utf8");
+}
+
+function nowInSeconds() {
+  return Math.floor(Date.now() / 1000);
 }

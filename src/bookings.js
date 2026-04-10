@@ -38,10 +38,6 @@ export function validateBookingRequest(input) {
     errors.memberStatus = "Please choose whether you are a church member.";
   }
 
-  if (value.memberStatus === "no") {
-    errors.memberStatus = "This booking form is only for church members.";
-  }
-
   if (value.memberStatus === "yes" && !value.membershipNumber) {
     errors.membershipNumber = "Please provide your membership number.";
   }

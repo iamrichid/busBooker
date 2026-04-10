@@ -33,6 +33,10 @@
     <main class="page page-member">
       <section class="landing-hero">
         <div class="landing-copy">
+          <div class="landing-identity">
+            <img src="/pcg-logo.png?v=3" alt="Presbyterian Church logo" class="landing-identity-logo" />
+            <p>Presbyterian Church of Ghana, Christ Congregation - Adentan</p>
+          </div>
           <p class="eyebrow">Christ Adenta Presby Transport</p>
           <h1 class="font-display text-4xl leading-tight text-slate-900 md:text-5xl">Church Bus Reservation Booker Online.</h1>
           <p class="hero-text text-base leading-7 text-slate-600">
@@ -46,10 +50,10 @@
             <li>Clear status updates after processing</li>
           </ul>
 
-          <div class="hero-actions items-center gap-4">
+          <div class="hero-actions landing-cta items-center gap-4">
             <button
               id="openBookingButton"
-              class="primary-button rounded-lg px-6 py-3 text-sm font-semibold tracking-tight"
+              class="primary-button landing-cta-button rounded-lg px-6 py-3 text-sm font-semibold tracking-tight"
               type="button"
               data-open-booking
             >
@@ -63,16 +67,22 @@
 
         <aside class="landing-media">
           <img
+            id="heroBusImage"
             src="https://images.unsplash.com/photo-1570125909232-eb263c188f7e?auto=format&fit=crop&w=1400&q=80"
             alt="Church bus parked outdoors"
             class="hero-bus-image"
+            data-slides='[
+              "https://images.unsplash.com/photo-1570125909232-eb263c188f7e?auto=format&fit=crop&w=1400&q=80",
+              "https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?auto=format&fit=crop&w=1400&q=80",
+              "https://images.unsplash.com/photo-1564694202779-bc908c327862?auto=format&fit=crop&w=1400&q=80"
+            ]'
           />
-          <p class="landing-media-note">Dependable transport for ministry, outreach, and fellowship events.</p>
+          <p class="landing-media-note">Dependable transport for ministry, outreach, fellowship and any other event.</p>
         </aside>
       </section>
 
       <section class="landing-flow" aria-label="How bus booking works">
-        <h2 class="font-display">How It Works</h2>
+        <h2 class="font-display">Process</h2>
         <ol class="flow-steps">
           <li>
             <span class="flow-step-number">1</span>

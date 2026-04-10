@@ -51,14 +51,13 @@ test("validateBookingRequest requires a membership number for members", () => {
   assert.equal(result.errors.membershipNumber, "Please provide your membership number.");
 });
 
-test("validateBookingRequest rejects non-members", () => {
+test("validateBookingRequest allows non-members", () => {
   const result = validateBookingRequest({
     ...validBooking,
     memberStatus: "no",
   });
 
-  assert.equal(result.ok, false);
-  assert.equal(result.errors.memberStatus, "This booking form is only for church members.");
+  assert.equal(result.ok, true);
 });
 
 test("validateBookingRequest enforces 10-digit Ghana phone numbers", () => {
@@ -90,6 +89,17 @@ test("validateBookingRequest coerces full-day bookings to a full-day slot", () =
 
   assert.equal(result.ok, true);
   assert.equal(result.value.timeSlot, "full_day");
+});
+
+test("validateBookingRequest rejects end date before start date", () => {
+  const result = validateBookingRequest({
+    ...validBooking,
+    fromDate: "2099-08-20",
+    toDate: "2099-08-19",
+  });
+
+  assert.equal(result.ok, false);
+  assert.equal(result.errors.toDate, "End date cannot be earlier than start date.");
 });
 
 test("hasScheduleConflict matches same day and slot", () => {
