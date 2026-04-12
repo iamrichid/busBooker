@@ -31,74 +31,51 @@
   </head>
   <body class="member-shell font-sans antialiased text-slate-900 bg-white">
     <main class="page page-member">
-      <section class="landing-hero">
-        <div class="landing-copy">
-          <div class="landing-identity">
-            <img src="/pcg-logo.png?v=3" alt="Presbyterian Church logo" class="landing-identity-logo" />
-            <p>Presbyterian Church of Ghana, Christ Congregation - Adentan</p>
-          </div>
-          <h1 class="font-display text-4xl leading-tight text-slate-900 md:text-5xl">Church Bus Reservation Booker Online.</h1>
-          <p class="hero-text text-base leading-7 text-slate-600">
-            Members request the bus once, the transport team reviews it, and approved trips stay orderly.
-            Clean, simple, and ready for official church activities.
-          </p>
+      <section class="hero-carousel" aria-label="Church bus image carousel">
+        <button id="heroPrevButton" class="carousel-arrow carousel-arrow-left" type="button" aria-label="Previous slide">
+          &#10094;
+        </button>
 
-          <div class="hero-actions landing-cta items-center gap-4">
-            <button
-              id="openBookingButton"
-              class="primary-button landing-cta-button rounded-lg px-6 py-3 text-sm font-semibold tracking-tight"
-              type="button"
-              data-open-booking
-            >
-              Request the bus
-            </button>
-            <p class="action-note text-sm text-slate-500">The form opens as a guided request sheet.</p>
-          </div>
+        <div
+          id="heroCarouselTrack"
+          class="hero-carousel-track"
+          data-slides='[
+            "https://images.unsplash.com/photo-1570125909232-eb263c188f7e?auto=format&fit=crop&w=1600&q=80",
+            "https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?auto=format&fit=crop&w=1600&q=80",
+            "https://images.unsplash.com/photo-1564694202779-bc908c327862?auto=format&fit=crop&w=1600&q=80"
+          ]'
+        >
+          <div class="hero-carousel-overlay">
+            <div class="landing-identity">
+              <img src="/pcg-logo.png?v=3" alt="Presbyterian Church logo" class="landing-identity-logo" />
+              <p>Presbyterian Church of Ghana, Christ Congregation - Adentan</p>
+            </div>
+            <h1 class="font-display text-4xl leading-tight text-white md:text-5xl">Church Bus Reservation Booker Online.</h1>
+            <p class="hero-text text-base leading-7 text-slate-100">
+              Members and outside parties can request the bus once, then the transport team reviews and approves.
+            </p>
+            <p class="landing-media-note text-white">
+              Dependable transport for ministry, outreach, fellowship and any other event.
+            </p>
 
-          <div id="pageNotice" class="form-message page-notice" aria-live="polite" hidden></div>
+            <div class="hero-actions landing-cta items-center gap-4">
+              <button
+                id="openBookingButton"
+                class="primary-button landing-cta-button rounded-lg px-6 py-3 text-sm font-semibold tracking-tight"
+                type="button"
+                data-open-booking
+              >
+                Request the bus
+              </button>
+            </div>
+
+            <div id="pageNotice" class="form-message page-notice" aria-live="polite" hidden></div>
+          </div>
         </div>
 
-        <aside class="landing-media">
-          <img
-            id="heroBusImage"
-            src="https://images.unsplash.com/photo-1570125909232-eb263c188f7e?auto=format&fit=crop&w=1400&q=80"
-            alt="Church bus parked outdoors"
-            class="hero-bus-image"
-            data-slides='[
-              "https://images.unsplash.com/photo-1570125909232-eb263c188f7e?auto=format&fit=crop&w=1400&q=80",
-              "https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?auto=format&fit=crop&w=1400&q=80",
-              "https://images.unsplash.com/photo-1564694202779-bc908c327862?auto=format&fit=crop&w=1400&q=80"
-            ]'
-          />
-          <p class="landing-media-note">Dependable transport for ministry, outreach, fellowship and any other event.</p>
-        </aside>
-      </section>
-
-      <section class="landing-flow" aria-label="How bus booking works">
-        <h2 class="font-display">Process</h2>
-        <ol class="flow-steps">
-          <li>
-            <span class="flow-step-number">1</span>
-            <div>
-              <h3>Submit Request</h3>
-              <p>Fill in your church event details, trip date, and destination.</p>
-            </div>
-          </li>
-          <li>
-            <span class="flow-step-number">2</span>
-            <div>
-              <h3>Admin Review</h3>
-              <p>Transport admins review schedule fit and assign an available bus.</p>
-            </div>
-          </li>
-          <li>
-            <span class="flow-step-number">3</span>
-            <div>
-              <h3>Get Decision</h3>
-              <p>Your request is approved or declined with feedback from the desk.</p>
-            </div>
-          </li>
-        </ol>
+        <button id="heroNextButton" class="carousel-arrow carousel-arrow-right" type="button" aria-label="Next slide">
+          &#10095;
+        </button>
       </section>
 
     </main>

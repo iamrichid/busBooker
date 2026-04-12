@@ -49,7 +49,7 @@ phoneInput?.addEventListener("input", sanitizePhoneInput);
 fromDateInput?.addEventListener("change", syncToDateWithFromDate);
 form?.addEventListener("submit", handleSubmit);
 bindLiveValidation();
-initHeroSlideshow();
+initHeroCarousel();
 
 if (dialog) {
   dialog.addEventListener("click", (event) => {
@@ -490,34 +490,54 @@ function getFieldInput(field) {
   return form.querySelector(`[name="${field}"]`);
 }
 
-function initHeroSlideshow() {
-  const image = document.querySelector("#heroBusImage");
+function initHeroCarousel() {
+  const track = document.querySelector("#heroCarouselTrack");
+  const prevButton = document.querySelector("#heroPrevButton");
+  const nextButton = document.querySelector("#heroNextButton");
 
-  if (!image) {
+  if (!track) {
     return;
   }
 
   let slides = [];
 
   try {
-    slides = JSON.parse(image.dataset.slides || "[]");
+    slides = JSON.parse(track.dataset.slides || "[]");
   } catch {
     slides = [];
   }
 
-  if (!Array.isArray(slides) || slides.length < 2) {
+  if (!Array.isArray(slides) || slides.length === 0) {
     return;
   }
 
   let index = 0;
+  let timer = null;
 
-  setInterval(() => {
-    index = (index + 1) % slides.length;
-    image.style.opacity = "0.28";
+  const applySlide = () => {
+    track.style.backgroundImage = `url("${slides[index]}")`;
+  };
 
-    setTimeout(() => {
-      image.src = slides[index];
-      image.style.opacity = "1";
-    }, 200);
-  }, 4200);
+  const move = (direction) => {
+    index = (index + direction + slides.length) % slides.length;
+    applySlide();
+    resetTimer();
+  };
+
+  const resetTimer = () => {
+    if (timer) {
+      clearInterval(timer);
+    }
+
+    timer = setInterval(() => {
+      index = (index + 1) % slides.length;
+      applySlide();
+    }, 5200);
+  };
+
+  prevButton?.addEventListener("click", () => move(-1));
+  nextButton?.addEventListener("click", () => move(1));
+
+  applySlide();
+  resetTimer();
 }

@@ -248,17 +248,37 @@ textarea {
   margin-top: 1.15rem;
 }
 
-.landing-hero {
-  display: grid;
-  grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
-  gap: 1.5rem;
-  align-items: center;
-  margin-top: 1.25rem;
+.hero-carousel {
+  position: relative;
+  margin-top: 1.2rem;
 }
 
-.landing-copy {
+.hero-carousel-track {
+  position: relative;
+  min-height: clamp(420px, 56vw, 560px);
+  border-radius: 18px;
+  background-color: #11274a;
+  background-size: cover;
+  background-position: center;
+  overflow: hidden;
+  transition: background-image 320ms ease-in-out;
+}
+
+.hero-carousel-track::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(100deg, rgba(10, 23, 46, 0.82) 0%, rgba(10, 23, 46, 0.58) 48%, rgba(10, 23, 46, 0.24) 100%);
+}
+
+.hero-carousel-overlay {
+  position: relative;
+  z-index: 1;
   display: grid;
-  gap: 0.9rem;
+  gap: 0.95rem;
+  max-width: 660px;
+  padding: clamp(1rem, 3.5vw, 2.2rem);
 }
 
 .landing-identity {
@@ -278,60 +298,52 @@ textarea {
 .landing-identity p {
   margin: 0;
   max-width: 34ch;
-  color: var(--navy);
+  color: #f8fbff;
   font-size: 0.95rem;
   line-height: 1.2;
   font-weight: 600;
 }
 
-.landing-copy .hero-text {
-  margin-top: 0;
-}
-
-.landing-points {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  display: grid;
-  gap: 0.5rem;
-}
-
-.landing-points li {
-  position: relative;
-  padding-left: 1.15rem;
-  color: var(--muted);
-  font-size: 0.95rem;
-  line-height: 1.55;
-}
-
-.landing-points li::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  top: 0.52rem;
-  width: 0.45rem;
-  height: 0.45rem;
-  border-radius: 999px;
-  background: var(--gold);
-}
-
-.landing-media {
-  display: grid;
-  gap: 0.75rem;
-  justify-items: center;
-}
-
 .page-notice {
   margin-top: 0.85rem;
+  max-width: 520px;
 }
 
 .landing-media-note {
   margin: 0;
-  text-align: center;
+  text-align: left;
   font-size: 1.02rem;
-  color: var(--navy-soft);
+  color: #eef4ff;
   font-weight: 500;
   line-height: 1.55;
+}
+
+.carousel-arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 2;
+  width: 44px;
+  height: 64px;
+  border-radius: 12px;
+  border: none;
+  background: rgba(8, 20, 42, 0.68);
+  color: #ffffff;
+  font-size: 1.35rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.carousel-arrow:hover {
+  background: rgba(8, 20, 42, 0.86);
+}
+
+.carousel-arrow-left {
+  left: 0.4rem;
+}
+
+.carousel-arrow-right {
+  right: 0.4rem;
 }
 
 .landing-flow {
@@ -447,17 +459,14 @@ textarea {
 
 .landing-cta {
   justify-content: flex-start;
-}
-
-.landing-cta .action-note {
-  display: none;
+  margin-top: 0.3rem;
 }
 
 .landing-cta-button {
-  min-height: 56px !important;
-  padding: 0.95rem 2.3rem !important;
+  min-height: 52px !important;
+  padding: 0.86rem 2rem !important;
   background: #0e2f62 !important;
-  font-size: 1.05rem !important;
+  font-size: 1rem !important;
   font-weight: 700 !important;
 }
 
@@ -1077,7 +1086,6 @@ button:disabled {
 
 @media (max-width: 980px) {
   .premium-hero,
-  .landing-hero,
   .admin-stage,
   .feature-grid,
   .summary-grid,
@@ -1098,6 +1106,23 @@ button:disabled {
 
   .landing-identity p {
     font-size: 0.84rem;
+  }
+
+  .hero-carousel-track {
+    min-height: 470px;
+  }
+
+  .carousel-arrow {
+    width: 40px;
+    height: 56px;
+  }
+
+  .carousel-arrow-left {
+    left: 0.2rem;
+  }
+
+  .carousel-arrow-right {
+    right: 0.2rem;
   }
 
   .request-layout {
