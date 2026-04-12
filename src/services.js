@@ -59,6 +59,39 @@ export async function listBookingsForAdmin() {
   };
 }
 
+export async function listBookingsForFinance() {
+  const bookings = await readBookings();
+
+  return {
+    body: {
+      bookings: [...bookings].sort((left, right) =>
+        right.submittedAt.localeCompare(left.submittedAt),
+      ),
+    },
+    statusCode: 200,
+  };
+}
+
+export async function listAvailability() {
+  const bookings = await readBookings();
+  const approvedBookings = bookings.filter((booking) => booking.status === "approved");
+
+  return {
+    body: {
+      bookings: approvedBookings.map((booking) => ({
+        bookingType: booking.bookingType,
+        eventName: booking.eventName,
+        fromDate: booking.fromDate || booking.travelDate,
+        id: booking.id,
+        timeSlot: booking.timeSlot,
+        toDate: booking.toDate || booking.travelDate,
+      })),
+      generatedAt: new Date().toISOString(),
+    },
+    statusCode: 200,
+  };
+}
+
 export async function processAdminDecision(id, input) {
   if (!id) {
     throw new HttpError(400, "Booking id is required.");
@@ -87,6 +120,14 @@ export async function processAdminDecision(id, input) {
   }
 
   if (decision.value.decision === "approved") {
+    if (current.paymentStatus !== "confirmed") {
+      throw new HttpError(409, "Approval blocked until finance confirms payment.", {
+        fields: {
+          paymentStatus: "Payment must be confirmed by finance before approval.",
+        },
+      });
+    }
+
     const selectedVehicle = findVehicleById(decision.value.selectedVehicleId, fleet);
 
     if (!selectedVehicle) {
@@ -137,6 +178,58 @@ export async function processAdminDecision(id, input) {
       booking: updated,
       message: `Booking ${updated.status}.`,
       notifications: notificationSummary,
+    },
+    statusCode: 200,
+  };
+}
+
+export async function confirmBookingPayment(id, input) {
+  if (!id) {
+    throw new HttpError(400, "Booking id is required.");
+  }
+
+  const financeName = String(input.financeName || "").trim();
+  const paymentReference = String(input.paymentReference || "").trim();
+  const paymentNotes = String(input.paymentNotes || "").trim();
+
+  if (!financeName) {
+    throw new HttpError(400, "Finance officer name is required.");
+  }
+
+  if (!paymentReference) {
+    throw new HttpError(400, "Payment reference is required.", {
+      fields: {
+        paymentReference: "Enter receipt number or transaction reference.",
+      },
+    });
+  }
+
+  const bookings = await readBookings();
+  const current = bookings.find((booking) => booking.id === id);
+
+  if (!current) {
+    throw new HttpError(404, "Booking not found.");
+  }
+
+  if (current.status !== "pending") {
+    throw new HttpError(409, "Only pending requests can be payment-confirmed.");
+  }
+
+  const updated = {
+    ...current,
+    paymentConfirmedAt: new Date().toISOString(),
+    paymentConfirmedBy: financeName,
+    paymentNotes,
+    paymentReference,
+    paymentStatus: "confirmed",
+  };
+
+  await saveBooking(updated);
+
+  return {
+    body: {
+      booking: updated,
+      message: "Payment confirmed successfully.",
     },
     statusCode: 200,
   };

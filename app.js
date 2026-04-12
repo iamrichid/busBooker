@@ -38,6 +38,7 @@ document.querySelector("#closeBookingButton")?.addEventListener("click", closeBo
 document.querySelector("#cancelBookingButton")?.addEventListener("click", closeBookingDialog);
 
 setDateBounds();
+prefillDatesFromQuery();
 clearMessage();
 clearPageNotice();
 syncBookingType();
@@ -540,4 +541,28 @@ function initHeroCarousel() {
 
   applySlide();
   resetTimer();
+}
+
+function prefillDatesFromQuery() {
+  if (!fromDateInput || !toDateInput) {
+    return;
+  }
+
+  const params = new URLSearchParams(window.location.search);
+  const fromDate = String(params.get("fromDate") || "").trim();
+  const toDate = String(params.get("toDate") || "").trim();
+
+  if (!fromDate && !toDate) {
+    return;
+  }
+
+  if (fromDate) {
+    fromDateInput.value = fromDate;
+  }
+
+  if (toDate) {
+    toDateInput.value = toDate;
+  }
+
+  syncToDateWithFromDate();
 }

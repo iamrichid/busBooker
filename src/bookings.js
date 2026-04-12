@@ -138,6 +138,11 @@ export function buildBookingRecord(value) {
   return {
     ...value,
     id: randomUUID(),
+    paymentConfirmedAt: "",
+    paymentConfirmedBy: "",
+    paymentNotes: "",
+    paymentReference: "",
+    paymentStatus: "pending",
     status: "pending",
     submittedAt: new Date().toISOString(),
   };

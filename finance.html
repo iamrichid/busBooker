@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Bus Booker Finance</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body class="admin-shell">
+    <main class="page page-admin">
+      <header class="site-bar">
+        <a class="brand-lockup" href="/">
+          <img src="/pcg-logo.png" alt="Presbyterian Church of Ghana logo" class="brand-logo" />
+          <div class="brand-copy">
+            <p class="brand-name">Presbyterian Church of Ghana</p>
+            <p class="brand-role">Finance Desk</p>
+          </div>
+        </a>
+        <a class="admin-link" href="/">Member booking</a>
+      </header>
+
+      <section class="admin-stage admin-stage-auth-only">
+        <section id="financeAuthPanel" class="auth-panel">
+          <form id="financeSignInForm" class="auth-form">
+            <div>
+              <p class="eyebrow">Finance Sign In</p>
+              <h2>Open the finance desk</h2>
+            </div>
+
+            <label>
+              <span>Finance access code</span>
+              <input id="financeAccessCode" type="password" placeholder="Enter finance code" />
+            </label>
+
+            <label>
+              <span>Officer name</span>
+              <input id="financeName" type="text" placeholder="Finance officer" />
+            </label>
+
+            <button id="financeSignInButton" class="primary-button" type="submit">Sign in</button>
+            <p class="helper-text">Confirm payments here before admin approvals are completed.</p>
+          </form>
+        </section>
+      </section>
+
+      <div id="financeMessage" class="form-message" aria-live="polite"></div>
+
+      <section id="financeWorkspace" class="panel admin-workspace" hidden>
+        <div class="workspace-head">
+          <div>
+            <p class="eyebrow">Finance Workspace</p>
+            <h2>Confirm booking payments</h2>
+            <p class="panel-copy">
+              Signed in as <strong id="activeFinanceName">Finance officer</strong>.
+            </p>
+          </div>
+
+          <div class="workspace-actions">
+            <button id="refreshFinanceButton" class="ghost-button" type="button">Refresh</button>
+            <button id="financeLogoutButton" class="ghost-button" type="button">Log out</button>
+          </div>
+        </div>
+
+        <section class="request-table-panel">
+          <div class="section-title">
+            <h3>All requests</h3>
+            <span id="financeTableCount" class="count-pill">0</span>
+          </div>
+
+          <div class="request-table-wrap">
+            <table class="request-table">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Requester</th>
+                  <th>Event</th>
+                  <th>Booking</th>
+                  <th>Payment</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="financeTableBody"></tbody>
+            </table>
+          </div>
+        </section>
+      </section>
+    </main>
+
+    <dialog id="financePaymentModal" class="booking-dialog request-modal" aria-labelledby="financePaymentModalTitle">
+      <div class="dialog-shell request-modal-shell">
+        <div class="dialog-head">
+          <div>
+            <p class="eyebrow">Payment Confirmation</p>
+            <h2 id="financePaymentModalTitle">Confirm payment</h2>
+            <p id="financePaymentModalMeta" class="panel-copy"></p>
+          </div>
+          <button id="closeFinancePaymentModalButton" class="icon-button" type="button" aria-label="Close payment modal">
+            ×
+          </button>
+        </div>
+
+        <div class="request-modal-grid">
+          <section class="request-modal-card">
+            <dl id="financePaymentDetails" class="booking-details request-modal-details"></dl>
+          </section>
+
+          <section class="request-modal-card">
+            <label>
+              <span>Payment reference</span>
+              <input id="financePaymentReference" type="text" placeholder="Receipt or transaction reference" />
+              <small id="financePaymentReferenceError"></small>
+            </label>
+            <label>
+              <span>Finance notes</span>
+              <textarea id="financePaymentNotes" rows="4" placeholder="Optional notes"></textarea>
+            </label>
+            <div class="decision-actions">
+              <button id="confirmPaymentButton" type="button" class="primary-button">Confirm payment</button>
+              <button id="cancelPaymentButton" type="button" class="ghost-button">Cancel</button>
+            </div>
+          </section>
+        </div>
+      </div>
+    </dialog>
+
+    <template id="financeRowTemplate">
+      <tr>
+        <td data-col="date"></td>
+        <td data-col="requester"></td>
+        <td data-col="event"></td>
+        <td data-col="booking"></td>
+        <td data-col="payment"></td>
+        <td data-col="actions"></td>
+      </tr>
+    </template>
+
+    <script type="module" src="/finance.js"></script>
+  </body>
+</html>

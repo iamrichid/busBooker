@@ -598,8 +598,53 @@ textarea {
   line-height: 1.5;
 }
 
+.availability-picker {
+  display: grid;
+  gap: 0.45rem;
+  margin-top: 0.2rem;
+}
+
+.availability-picker label {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.availability-picker label span {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--navy-soft);
+}
+
 .request-intro {
   margin-bottom: 0.65rem;
+}
+
+.availability-calendar {
+  margin-top: 0.45rem;
+}
+
+.availability-calendar .fc {
+  font-family: "Manrope", "Segoe UI", sans-serif;
+}
+
+.availability-calendar .fc-toolbar-title {
+  font-family: "Fraunces", Georgia, serif;
+  font-size: 1.25rem;
+}
+
+.availability-calendar .fc-button {
+  background: #0e2f62 !important;
+  border: none !important;
+  border-radius: 8px !important;
+  box-shadow: none !important;
+}
+
+.availability-calendar .fc-button:hover {
+  background: #123c7a !important;
+}
+
+.availability-calendar .fc-daygrid-day.fc-day-today {
+  background: rgba(223, 198, 120, 0.24) !important;
 }
 
 .booking-dialog {
@@ -777,6 +822,11 @@ button:disabled {
 
 .admin-stage {
   align-items: stretch;
+}
+
+.admin-stage-auth-only {
+  grid-template-columns: minmax(320px, 560px);
+  justify-content: center;
 }
 
 .admin-copy {
@@ -1131,6 +1181,12 @@ button:disabled {
 
   .request-sidebar {
     position: static;
+  }
+
+  .availability-calendar .fc-toolbar {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
   }
 
   .request-topbar {

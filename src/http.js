@@ -11,6 +11,8 @@ export class HttpError extends Error {
 
 const ADMIN_SESSION_COOKIE = "admin_session";
 const ADMIN_SESSION_TTL_SECONDS = 60 * 60 * 12;
+const FINANCE_SESSION_COOKIE = "finance_session";
+const FINANCE_SESSION_TTL_SECONDS = 60 * 60 * 12;
 
 export function createAdminSession(adminName) {
   const safeName = String(adminName || "").trim();
@@ -23,7 +25,7 @@ export function createAdminSession(adminName) {
     name: safeName,
   };
 
-  return encodeSignedSession(payload);
+  return encodeSignedSession(payload, getAdminSessionSecret());
 }
 
 export function clearAdminSessionCookie(options = {}) {
@@ -70,11 +72,79 @@ export function authenticateAdminCredentials(accessCode, adminName) {
   }
 }
 
+export function createFinanceSession(financeName) {
+  const safeName = String(financeName || "").trim();
+  if (!safeName) {
+    throw new HttpError(400, "Finance officer name is required.");
+  }
+
+  const payload = {
+    exp: nowInSeconds() + FINANCE_SESSION_TTL_SECONDS,
+    name: safeName,
+  };
+
+  return encodeSignedSession(payload, getFinanceSessionSecret());
+}
+
+export function buildFinanceSessionCookie(sessionToken, options = {}) {
+  const attributes = ["Path=/", "HttpOnly", "SameSite=Lax", `Max-Age=${FINANCE_SESSION_TTL_SECONDS}`];
+  if (options.secure) {
+    attributes.push("Secure");
+  }
+
+  return `${FINANCE_SESSION_COOKIE}=${sessionToken}; ${attributes.join("; ")}`;
+}
+
+export function clearFinanceSessionCookie(options = {}) {
+  const attributes = ["Path=/", "HttpOnly", "SameSite=Lax", "Max-Age=0"];
+  if (options.secure) {
+    attributes.push("Secure");
+  }
+
+  return `${FINANCE_SESSION_COOKIE}=; ${attributes.join("; ")}`;
+}
+
+export function authenticateFinanceCredentials(accessCode, financeName) {
+  const financeAccessCode = process.env.FINANCE_ACCESS_CODE || process.env.ADMIN_ACCESS_CODE || "church-bus-2026";
+  const providedCode = String(accessCode || "").trim();
+  const providedName = String(financeName || "").trim();
+
+  if (!providedCode) {
+    throw new HttpError(400, "Finance access code is required.", {
+      fields: {
+        accessCode: "Please enter the finance access code.",
+      },
+    });
+  }
+
+  if (!providedName) {
+    throw new HttpError(400, "Finance officer name is required.", {
+      fields: {
+        financeName: "Please enter your name for this session.",
+      },
+    });
+  }
+
+  if (providedCode !== financeAccessCode) {
+    throw new HttpError(401, "Invalid finance access code.");
+  }
+}
+
 export function assertAdminAccess(requestHeaders) {
   const session = readAdminSession(requestHeaders);
 
   if (!session) {
     throw new HttpError(401, "Admin authentication is required.");
+  }
+
+  return session;
+}
+
+export function assertFinanceAccess(requestHeaders) {
+  const session = readFinanceSession(requestHeaders);
+
+  if (!session) {
+    throw new HttpError(401, "Finance authentication is required.");
   }
 
   return session;
@@ -102,13 +172,32 @@ export function readAdminSession(requestHeaders) {
     return null;
   }
 
-  const payload = decodeSignedSession(token);
+  const payload = decodeSignedSession(token, getAdminSessionSecret());
   if (!payload || payload.exp <= nowInSeconds() || !payload.name) {
     return null;
   }
 
   return {
     adminName: payload.name,
+    expiresAt: payload.exp,
+  };
+}
+
+export function readFinanceSession(requestHeaders) {
+  const cookieHeader = readHeader(requestHeaders, "cookie");
+  const token = readCookie(cookieHeader, FINANCE_SESSION_COOKIE);
+
+  if (!token) {
+    return null;
+  }
+
+  const payload = decodeSignedSession(token, getFinanceSessionSecret());
+  if (!payload || payload.exp <= nowInSeconds() || !payload.name) {
+    return null;
+  }
+
+  return {
+    financeName: payload.name,
     expiresAt: payload.exp,
   };
 }
@@ -172,20 +261,20 @@ function readHeader(headers, key) {
   return headers[key];
 }
 
-function encodeSignedSession(payload) {
+function encodeSignedSession(payload, secret) {
   const encodedPayload = toBase64Url(JSON.stringify(payload));
-  const signature = signValue(encodedPayload);
+  const signature = signValue(encodedPayload, secret);
   return `${encodedPayload}.${signature}`;
 }
 
-function decodeSignedSession(token) {
+function decodeSignedSession(token, secret) {
   const parts = String(token).split(".");
   if (parts.length !== 2) {
     return null;
   }
 
   const [encodedPayload, providedSignature] = parts;
-  const expectedSignature = signValue(encodedPayload);
+  const expectedSignature = signValue(encodedPayload, secret);
 
   if (!safeEqual(expectedSignature, providedSignature)) {
     return null;
@@ -199,9 +288,22 @@ function decodeSignedSession(token) {
   }
 }
 
-function signValue(value) {
-  const secret = process.env.ADMIN_SESSION_SECRET || process.env.ADMIN_ACCESS_CODE || "church-bus-2026";
+function signValue(value, secret) {
   return createHmac("sha256", secret).update(value).digest("base64url");
+}
+
+function getAdminSessionSecret() {
+  return process.env.ADMIN_SESSION_SECRET || process.env.ADMIN_ACCESS_CODE || "church-bus-2026";
+}
+
+function getFinanceSessionSecret() {
+  return (
+    process.env.FINANCE_SESSION_SECRET ||
+    process.env.FINANCE_ACCESS_CODE ||
+    process.env.ADMIN_SESSION_SECRET ||
+    process.env.ADMIN_ACCESS_CODE ||
+    "church-bus-2026"
+  );
 }
 
 function safeEqual(left, right) {

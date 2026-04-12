@@ -8,13 +8,21 @@ import {
   HttpError,
   assertAdminAccess,
   authenticateAdminCredentials,
+  authenticateFinanceCredentials,
   buildAdminSessionCookie,
+  buildFinanceSessionCookie,
   clearAdminSessionCookie,
+  clearFinanceSessionCookie,
   createAdminSession,
+  createFinanceSession,
   shouldUseSecureCookies,
+  assertFinanceAccess,
 } from "./src/http.js";
 import {
+  listAvailability,
   listBookingsForAdmin,
+  listBookingsForFinance,
+  confirmBookingPayment,
   processAdminDecision,
   submitBookingRequest,
 } from "./src/services.js";
@@ -30,11 +38,17 @@ const port = Number.parseInt(process.env.PORT || "3000", 10);
 const staticRoutes = new Map([
   ["/", "index.html"],
   ["/index.html", "index.html"],
+  ["/availability", "availability.html"],
+  ["/availability.html", "availability.html"],
   ["/request", "request.html"],
   ["/request.html", "request.html"],
   ["/admin", "admin.html"],
   ["/admin.html", "admin.html"],
+  ["/finance", "finance.html"],
+  ["/finance.html", "finance.html"],
   ["/app.js", "app.js"],
+  ["/finance.js", "finance.js"],
+  ["/availability.js", "availability.js"],
   ["/admin.js", "admin.js"],
   ["/pcg-logo.png", "pcg-logo.png"],
   ["/bus-hero.svg", "bus-hero.svg"],
@@ -75,6 +89,15 @@ const server = createServer(async (request, response) => {
 
       const body = await readJsonBody(request);
       const result = await submitBookingRequest(body);
+      return sendJson(response, result.statusCode, result.body);
+    }
+
+    if (pathname === "/api/availability") {
+      if (request.method !== "GET") {
+        throw new HttpError(405, "Method not allowed.");
+      }
+
+      const result = await listAvailability();
       return sendJson(response, result.statusCode, result.body);
     }
 
@@ -148,6 +171,78 @@ const server = createServer(async (request, response) => {
       }
 
       throw new HttpError(405, "Method not allowed.");
+    }
+
+    if (pathname === "/api/finance/session") {
+      const useSecureCookies = shouldUseSecureCookies(request.headers);
+
+      if (request.method === "POST") {
+        const body = await readJsonBody(request);
+        authenticateFinanceCredentials(body.accessCode, body.financeName);
+        const token = createFinanceSession(body.financeName);
+
+        return sendJson(
+          response,
+          200,
+          {
+            authenticated: true,
+            financeName: String(body.financeName || "").trim(),
+          },
+          {
+            "Set-Cookie": buildFinanceSessionCookie(token, { secure: useSecureCookies }),
+          },
+        );
+      }
+
+      if (request.method === "GET") {
+        const session = assertFinanceAccess(request.headers);
+        return sendJson(response, 200, {
+          authenticated: true,
+          financeName: session.financeName,
+        });
+      }
+
+      if (request.method === "DELETE") {
+        return sendJson(
+          response,
+          200,
+          {
+            authenticated: false,
+          },
+          {
+            "Set-Cookie": clearFinanceSessionCookie({ secure: useSecureCookies }),
+          },
+        );
+      }
+
+      throw new HttpError(405, "Method not allowed.");
+    }
+
+    if (pathname === "/api/finance/bookings") {
+      if (request.method !== "GET") {
+        throw new HttpError(405, "Method not allowed.");
+      }
+
+      const session = assertFinanceAccess(request.headers);
+      const result = await listBookingsForFinance();
+      return sendJson(response, result.statusCode, {
+        ...result.body,
+        financeName: session.financeName,
+      });
+    }
+
+    if (pathname === "/api/finance/bookings/payment") {
+      if (request.method !== "POST") {
+        throw new HttpError(405, "Method not allowed.");
+      }
+
+      const session = assertFinanceAccess(request.headers);
+      const body = await readJsonBody(request);
+      const result = await confirmBookingPayment(url.searchParams.get("id"), {
+        ...body,
+        financeName: session.financeName,
+      });
+      return sendJson(response, result.statusCode, result.body);
     }
 
     if (staticRoutes.has(pathname)) {
