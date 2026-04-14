@@ -6,8 +6,12 @@ const membershipNumberWrap = document.querySelector("#membershipNumberWrap");
 const phoneInput = document.querySelector("#phone");
 const timeSlot = document.querySelector("#timeSlot");
 const timeSlotWrap = document.querySelector("#timeSlotWrap");
+const endLocationMode = document.querySelector("#endLocationMode");
+const endLocationWrap = document.querySelector("#endLocationWrap");
 const fromDateInput = document.querySelector("#fromDate");
 const toDateInput = document.querySelector("#toDate");
+const startTimeInput = document.querySelector("#startTime");
+const endTimeInput = document.querySelector("#endTime");
 const submitButton = document.querySelector("#submitButton");
 const formMessage = document.querySelector("#formMessage");
 const pageNotice = document.querySelector("#pageNotice");
@@ -17,17 +21,23 @@ const LIVE_VALIDATE_FIELDS = [
   "memberStatus",
   "membershipNumber",
   "requesterName",
-  "ministryName",
+  "organizationName",
   "requesterEmail",
   "phone",
   "eventName",
   "purpose",
+  "passengerCount",
+  "endLocationMode",
+  "endLocation",
   "fromDate",
+  "startTime",
   "toDate",
+  "endTime",
   "bookingType",
   "timeSlot",
   "pickupLocation",
   "destination",
+  "termsAccepted",
 ];
 
 document.querySelectorAll("[data-open-booking]").forEach((button) => {
@@ -43,10 +53,14 @@ clearMessage();
 clearPageNotice();
 syncBookingType();
 syncMembershipState();
+syncEndLocationState();
 
 bookingType?.addEventListener("change", syncBookingType);
 memberStatus?.addEventListener("change", syncMembershipState);
+endLocationMode?.addEventListener("change", syncEndLocationState);
 phoneInput?.addEventListener("input", sanitizePhoneInput);
+fromDateInput?.addEventListener("change", syncDateAndTimeBounds);
+toDateInput?.addEventListener("change", syncDateAndTimeBounds);
 fromDateInput?.addEventListener("change", syncToDateWithFromDate);
 form?.addEventListener("submit", handleSubmit);
 bindLiveValidation();
@@ -114,6 +128,11 @@ async function handleSubmit(event) {
 
     const successMessage = `${result.message}${notificationNotes ? ` Notification status: ${notificationNotes}.` : ""}`;
 
+    if (result.trackingUrl) {
+      window.location.href = result.trackingUrl;
+      return;
+    }
+
     if (dialog) {
       clearMessage();
       closeBookingDialog();
@@ -151,6 +170,7 @@ function setDateBounds() {
   if (toDateInput) {
     toDateInput.min = fromDateInput?.value || today;
   }
+
 }
 
 function syncToDateWithFromDate() {
@@ -164,7 +184,37 @@ function syncToDateWithFromDate() {
     toDateInput.value = fromDateInput.value;
   }
 
-  clearErrorsForFields(["fromDate", "toDate"]);
+  clearErrorsForFields(["fromDate", "toDate", "startTime", "endTime"]);
+  syncDateAndTimeBounds();
+}
+
+function syncDateAndTimeBounds() {
+  if (!fromDateInput || !toDateInput || !startTimeInput || !endTimeInput) {
+    return;
+  }
+
+  if (fromDateInput.value && toDateInput.value && fromDateInput.value === toDateInput.value) {
+    endTimeInput.min = startTimeInput.value || "";
+  } else {
+    endTimeInput.min = "";
+  }
+}
+
+function syncEndLocationState() {
+  if (!endLocationMode || !endLocationWrap || !form) {
+    return;
+  }
+
+  const isOther = endLocationMode.value === "other";
+  const endLocationInput = endLocationWrap.querySelector("input");
+
+  endLocationWrap.hidden = !isOther;
+  endLocationInput.required = isOther;
+
+  if (!isOther) {
+    endLocationInput.value = "";
+    clearErrorsForFields(["endLocation"]);
+  }
 }
 
 function syncMembershipState() {
@@ -357,6 +407,11 @@ function bindLiveValidation() {
       return;
     }
 
+    if (node.type === "checkbox") {
+      node.addEventListener("change", () => validateSingleField(field));
+      return;
+    }
+
     node.addEventListener("input", () => clearErrorsForFields([field]));
   });
 }
@@ -387,6 +442,7 @@ function validatePayload(payload) {
   const errors = {};
   const isMember = payload.memberStatus === "yes";
   const isFullDay = payload.bookingType === "full_day";
+  const endLocationIsOther = payload.endLocationMode === "other";
 
   if (isMember && payload.membershipNumber.length < 3) {
     errors.membershipNumber = "Membership number is required for members.";
@@ -396,20 +452,19 @@ function validatePayload(payload) {
     errors.requesterName = "Enter your full name.";
   }
 
-  if (payload.ministryName.length < 2) {
-    errors.ministryName = "Enter ministry or department.";
+  if (payload.organizationName.length < 2) {
+    errors.organizationName = "Enter organisation or ministry name.";
   }
 
-  if (!payload.requesterEmail && !payload.phone) {
-    errors.requesterEmail = "Provide email or phone.";
-    errors.phone = "Provide phone or email.";
+  if (!payload.requesterEmail) {
+    errors.requesterEmail = "Email is required.";
   }
 
-  if (payload.requesterEmail && !EMAIL_PATTERN.test(payload.requesterEmail)) {
+  if (!EMAIL_PATTERN.test(payload.requesterEmail)) {
     errors.requesterEmail = "Enter a valid email address.";
   }
 
-  if (payload.phone && !GHANA_PHONE_PATTERN.test(payload.phone)) {
+  if (!GHANA_PHONE_PATTERN.test(payload.phone)) {
     errors.phone = "Use a 10-digit Ghana phone number starting with 0.";
   }
 
@@ -419,6 +474,18 @@ function validatePayload(payload) {
 
   if (payload.purpose.length < 12) {
     errors.purpose = "Purpose should be at least 12 characters.";
+  }
+
+  if (!Number.isInteger(payload.passengerCount) || payload.passengerCount < 1) {
+    errors.passengerCount = "Enter the number of people.";
+  }
+
+  if (!payload.endLocationMode) {
+    errors.endLocationMode = "Choose the end location mode.";
+  }
+
+  if (endLocationIsOther && payload.endLocation.length < 2) {
+    errors.endLocation = "Enter the end location.";
   }
 
   if (!payload.fromDate) {
@@ -431,6 +498,23 @@ function validatePayload(payload) {
     errors.toDate = "Select an end date.";
   } else if (payload.fromDate && payload.toDate < payload.fromDate) {
     errors.toDate = "End date cannot be earlier than start date.";
+  }
+
+  if (!payload.startTime) {
+    errors.startTime = "Select a start time.";
+  }
+
+  if (!payload.endTime) {
+    errors.endTime = "Select an end time.";
+  } else if (
+    payload.fromDate &&
+    payload.toDate &&
+    payload.startTime &&
+    payload.endTime &&
+    payload.fromDate === payload.toDate &&
+    payload.endTime <= payload.startTime
+  ) {
+    errors.endTime = "End time must be later than start time for same-day trips.";
   }
 
   if (!payload.bookingType) {
@@ -449,27 +533,41 @@ function validatePayload(payload) {
     errors.destination = "Enter destination.";
   }
 
+  if (!payload.termsAccepted) {
+    errors.termsAccepted = "You must accept the terms and conditions.";
+  }
+
   return errors;
 }
 
 function normalizePayload(payload) {
+  const pickupLocation = String(payload.pickupLocation || "").trim();
+  const endLocationMode = String(payload.endLocationMode || "").trim();
+  const endLocationRaw = String(payload.endLocation || "").trim();
+
   return {
     ...payload,
     bookingType: String(payload.bookingType || "").trim(),
     destination: String(payload.destination || "").trim(),
+    endLocationMode,
+    endLocation: endLocationMode === "same_as_setoff" ? pickupLocation : endLocationRaw,
     eventName: String(payload.eventName || "").trim(),
+    startTime: String(payload.startTime || "").trim(),
+    endTime: String(payload.endTime || "").trim(),
     memberStatus: String(payload.memberStatus || "").trim(),
     membershipNumber: String(payload.membershipNumber || "").trim(),
-    ministryName: String(payload.ministryName || "").trim(),
+    organizationName: String(payload.organizationName || "").trim(),
     notes: String(payload.notes || "").trim(),
     phone: String(payload.phone || "").replace(/\D/g, "").slice(0, 10),
-    pickupLocation: String(payload.pickupLocation || "").trim(),
+    passengerCount: Number.parseInt(String(payload.passengerCount || ""), 10),
+    pickupLocation,
     purpose: String(payload.purpose || "").trim(),
     requesterEmail: String(payload.requesterEmail || "").trim(),
     requesterName: String(payload.requesterName || "").trim(),
     timeSlot: String(payload.timeSlot || "").trim(),
     fromDate: String(payload.fromDate || payload.travelDate || "").trim(),
     toDate: String(payload.toDate || payload.travelDate || "").trim(),
+    termsAccepted: String(payload.termsAccepted || "").toLowerCase() === "on",
   };
 }
 

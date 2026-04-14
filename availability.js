@@ -1,54 +1,18 @@
-const calendarNode = document.querySelector("#availabilityCalendar");
 const continueButton = document.querySelector("#continueToRequestButton");
 const selectedDateRangeText = document.querySelector("#selectedDateRangeText");
+const leadTimeWarning = document.querySelector("#leadTimeWarning");
 const fromDateInput = document.querySelector("#availabilityFromDate");
 const toDateInput = document.querySelector("#availabilityToDate");
 const applyDateRangeButton = document.querySelector("#applyDateRangeButton");
 
+const BOOKING_LEAD_DAYS = 7;
+
 const state = {
-  calendar: null,
   fromDate: "",
   toDate: "",
 };
 
-if (calendarNode) {
-  initializeCalendar();
-}
-
 configureDatePickers();
-
-async function initializeCalendar() {
-  const availability = await loadAvailability();
-  const events = mapBookingsToEvents(availability.bookings || []);
-
-  const calendar = new FullCalendar.Calendar(calendarNode, {
-    headerToolbar: {
-      center: "title",
-      left: "prev,next today",
-      right: "dayGridMonth,timeGridWeek",
-    },
-    height: "auto",
-    initialView: "dayGridMonth",
-    validRange: {
-      start: currentLocalDateString(),
-    },
-    selectable: true,
-    selectMirror: true,
-    dayMaxEvents: true,
-    events,
-    select: (info) => {
-      const fromDate = info.startStr.slice(0, 10);
-      const toDate = toInclusiveDate(info.endStr);
-      updateSelectedRange(fromDate, toDate);
-    },
-    dateClick: (info) => {
-      updateSelectedRange(info.dateStr, info.dateStr);
-    },
-  });
-
-  calendar.render();
-  state.calendar = calendar;
-}
 
 continueButton?.addEventListener("click", () => {
   if (!state.fromDate || !state.toDate) {
@@ -60,60 +24,26 @@ continueButton?.addEventListener("click", () => {
 });
 
 applyDateRangeButton?.addEventListener("click", () => {
+  applyDateRange();
+});
+
+function applyDateRange() {
   const fromDate = String(fromDateInput?.value || "");
   const toDate = String(toDateInput?.value || "");
 
   if (!fromDate || !toDate) {
+    updateSelectedRange("", "");
     selectedDateRangeText.textContent = "Choose both from and to dates.";
     return;
   }
 
   if (toDate < fromDate) {
+    updateSelectedRange("", "");
     selectedDateRangeText.textContent = "End date cannot be earlier than start date.";
     return;
   }
 
   updateSelectedRange(fromDate, toDate);
-
-  if (state.calendar) {
-    state.calendar.select({
-      start: fromDate,
-      end: addDays(toDate, 1),
-    });
-  }
-});
-
-async function loadAvailability() {
-  try {
-    const response = await fetch("/api/availability");
-    const result = await response.json();
-
-    if (!response.ok) {
-      throw new Error(result.error || "Could not load availability.");
-    }
-
-    return result;
-  } catch (error) {
-    selectedDateRangeText.textContent = error.message || "Could not load availability.";
-    return { bookings: [] };
-  }
-}
-
-function mapBookingsToEvents(bookings) {
-  return bookings.map((booking) => {
-    const fromDate = booking.fromDate || booking.travelDate;
-    const toDate = booking.toDate || booking.travelDate;
-    const titlePrefix = booking.bookingType === "full_day" ? "Booked • Full day" : `Booked • ${booking.timeSlot}`;
-
-    return {
-      allDay: true,
-      color: booking.bookingType === "full_day" ? "#d14343" : "#c88a16",
-      display: "block",
-      end: addDays(toDate, 1),
-      start: fromDate,
-      title: `${titlePrefix}${booking.eventName ? ` • ${booking.eventName}` : ""}`,
-    };
-  });
 }
 
 function updateSelectedRange(fromDate, toDate) {
@@ -121,25 +51,67 @@ function updateSelectedRange(fromDate, toDate) {
   state.toDate = toDate;
 
   if (!fromDate || !toDate) {
-    selectedDateRangeText.textContent = "No date range selected yet.";
     continueButton.disabled = true;
+    updateLeadTimeWarning("");
     return;
   }
 
   selectedDateRangeText.textContent = `Selected: ${formatDate(fromDate)} to ${formatDate(toDate)}`;
   continueButton.disabled = false;
-  syncPickers(fromDate, toDate);
+  updateLeadTimeWarning(fromDate);
+}
+
+function updateLeadTimeWarning(fromDate) {
+  if (!leadTimeWarning) {
+    return;
+  }
+
+  leadTimeWarning.hidden = !isWithinLeadWindow(fromDate);
+}
+
+function configureDatePickers() {
+  const today = currentLocalDateString();
+
+  if (fromDateInput) {
+    fromDateInput.min = today;
+    fromDateInput.addEventListener("change", () => {
+      syncToDateLimit();
+
+      if (toDateInput?.value) {
+        applyDateRange();
+      }
+    });
+  }
+
+  if (toDateInput) {
+    toDateInput.min = today;
+    toDateInput.addEventListener("change", applyDateRange);
+  }
+}
+
+function syncToDateLimit() {
+  if (!toDateInput || !fromDateInput) {
+    return;
+  }
+
+  toDateInput.min = fromDateInput.value || currentLocalDateString();
+
+  if (toDateInput.value && fromDateInput.value && toDateInput.value < fromDateInput.value) {
+    toDateInput.value = fromDateInput.value;
+  }
+}
+
+function isWithinLeadWindow(dateString) {
+  return Boolean(dateString && dateString < preferredBookingDateString());
+}
+
+function preferredBookingDateString() {
+  return addDays(currentLocalDateString(), BOOKING_LEAD_DAYS);
 }
 
 function addDays(dateString, days) {
   const date = new Date(`${dateString}T00:00:00`);
   date.setDate(date.getDate() + days);
-  return toDateInputValue(date);
-}
-
-function toInclusiveDate(fullCalendarEnd) {
-  const date = new Date(`${fullCalendarEnd.slice(0, 10)}T00:00:00`);
-  date.setDate(date.getDate() - 1);
   return toDateInputValue(date);
 }
 
@@ -150,48 +122,12 @@ function toDateInputValue(date) {
   return `${year}-${month}-${day}`;
 }
 
+function currentLocalDateString() {
+  return toDateInputValue(new Date());
+}
+
 function formatDate(value) {
   return new Intl.DateTimeFormat(undefined, {
     dateStyle: "medium",
   }).format(new Date(`${value}T00:00:00`));
-}
-
-function configureDatePickers() {
-  const today = currentLocalDateString();
-
-  if (fromDateInput) {
-    fromDateInput.min = today;
-    fromDateInput.addEventListener("change", () => {
-      if (toDateInput) {
-        toDateInput.min = fromDateInput.value || today;
-
-        if (toDateInput.value && fromDateInput.value && toDateInput.value < fromDateInput.value) {
-          toDateInput.value = fromDateInput.value;
-        }
-      }
-    });
-  }
-
-  if (toDateInput) {
-    toDateInput.min = today;
-  }
-}
-
-function syncPickers(fromDate, toDate) {
-  if (fromDateInput) {
-    fromDateInput.value = fromDate;
-  }
-
-  if (toDateInput) {
-    toDateInput.min = fromDate;
-    toDateInput.value = toDate;
-  }
-}
-
-function currentLocalDateString() {
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, "0");
-  const day = String(now.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
 }

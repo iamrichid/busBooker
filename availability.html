@@ -24,55 +24,52 @@
         },
       };
     </script>
-    <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.css" rel="stylesheet" />
     <link rel="stylesheet" href="/styles.css" />
   </head>
   <body class="member-shell request-page font-sans antialiased text-slate-900 bg-white">
     <main class="page page-member">
-      <section class="request-topbar">
-        <a href="/" class="ghost-button">Back to Home</a>
+      <section class="request-topbar availability-topbar">
         <div>
           <p class="eyebrow">Bus Availability</p>
           <h1 class="font-display">Select Date Range</h1>
         </div>
       </section>
 
-      <section class="request-layout">
-        <aside class="request-sidebar">
-          <h2>How to Use</h2>
-          <ul>
-            <li>Click and drag dates on the calendar.</li>
-            <li>Or use the date pickers below.</li>
-            <li>Booked dates are shown directly on the calendar.</li>
-            <li>Continue to form with your selected dates.</li>
-          </ul>
-          <div class="availability-picker">
-            <label>
-              <span>From date</span>
-              <input id="availabilityFromDate" type="date" />
-            </label>
-            <label>
-              <span>To date</span>
-              <input id="availabilityToDate" type="date" />
-            </label>
-            <button id="applyDateRangeButton" class="ghost-button" type="button">Apply date range</button>
-          </div>
-          <p id="selectedDateRangeText">No date range selected yet.</p>
-          <button id="continueToRequestButton" class="primary-button" type="button" disabled>
-            Continue to Request Form
-          </button>
-        </aside>
+      <section class="availability-warning" role="note" aria-label="Booking notice">
+        <strong>Book at least one week ahead.</strong>
+        <span>
+          Requests for dates within the next 7 days may be delayed or unavailable after review.
+        </span>
+      </section>
 
-        <section class="panel request-panel">
-          <p class="panel-copy request-intro">
-            This calendar shows approved bookings. Select your preferred range, then continue to complete the form.
-          </p>
-          <div id="availabilityCalendar" class="availability-calendar" aria-label="Availability calendar"></div>
-        </section>
+      <section class="panel availability-form-panel">
+        <div class="availability-form-copy">
+          <h2>Check dates</h2>
+          <p>Enter your preferred date range before filling the request form.</p>
+        </div>
+
+        <div class="availability-picker">
+          <label>
+            <span>From date</span>
+            <input id="availabilityFromDate" type="date" />
+          </label>
+          <label>
+            <span>To date</span>
+            <input id="availabilityToDate" type="date" />
+          </label>
+          <button id="applyDateRangeButton" class="ghost-button" type="button">Apply date range</button>
+        </div>
+
+        <p id="selectedDateRangeText" class="availability-selection">No date range selected yet.</p>
+        <p id="leadTimeWarning" class="lead-time-warning" hidden>
+          This selection is within 7 days, so approval may take longer or the bus may be unavailable.
+        </p>
+        <button id="continueToRequestButton" class="primary-button" type="button" disabled>
+          Continue to Request Form
+        </button>
       </section>
     </main>
 
-    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js"></script>
     <script type="module" src="/availability.js"></script>
   </body>
 </html>

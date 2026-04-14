@@ -22,6 +22,7 @@ import {
   listAvailability,
   listBookingsForAdmin,
   listBookingsForFinance,
+  getBookingTracking,
   confirmBookingPayment,
   processAdminDecision,
   submitBookingRequest,
@@ -42,6 +43,8 @@ const staticRoutes = new Map([
   ["/availability.html", "availability.html"],
   ["/request", "request.html"],
   ["/request.html", "request.html"],
+  ["/track", "track.html"],
+  ["/track.html", "track.html"],
   ["/admin", "admin.html"],
   ["/admin.html", "admin.html"],
   ["/finance", "finance.html"],
@@ -49,6 +52,7 @@ const staticRoutes = new Map([
   ["/app.js", "app.js"],
   ["/finance.js", "finance.js"],
   ["/availability.js", "availability.js"],
+  ["/track.js", "track.js"],
   ["/admin.js", "admin.js"],
   ["/pcg-logo.png", "pcg-logo.png"],
   ["/bus-hero.svg", "bus-hero.svg"],
@@ -98,6 +102,15 @@ const server = createServer(async (request, response) => {
       }
 
       const result = await listAvailability();
+      return sendJson(response, result.statusCode, result.body);
+    }
+
+    if (pathname === "/api/tracking") {
+      if (request.method !== "GET") {
+        throw new HttpError(405, "Method not allowed.");
+      }
+
+      const result = await getBookingTracking(url.searchParams.get("code"));
       return sendJson(response, result.statusCode, result.body);
     }
 

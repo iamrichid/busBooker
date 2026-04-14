@@ -86,11 +86,15 @@
 
         <div class="summary-grid">
           <article class="summary-card summary-card-primary">
-            <span class="summary-label">Pending</span>
+            <span class="summary-label">Pending review</span>
             <strong id="summaryPending">0</strong>
           </article>
           <article class="summary-card">
-            <span class="summary-label">Approved</span>
+            <span class="summary-label">Awaiting payment</span>
+            <strong id="summaryAwaitingPayment">0</strong>
+          </article>
+          <article class="summary-card">
+            <span class="summary-label">Released</span>
             <strong id="summaryApproved">0</strong>
           </article>
           <article class="summary-card">
@@ -111,10 +115,10 @@
                 <tr>
                   <th>Date</th>
                   <th>Member</th>
-                  <th>Ministry</th>
+                  <th>Organisation</th>
                   <th>Booking</th>
                   <th>Status</th>
-                  <th>Assigned bus</th>
+                  <th>Stage note</th>
                   <th>Actions</th>
                 </tr>
               </thead>
@@ -153,17 +157,38 @@
                 <small id="requestModalVehicleError"></small>
               </label>
               <label>
+                <span>Driver name</span>
+                <input id="requestModalDriverName" type="text" placeholder="Assigned driver" />
+                <small id="requestModalDriverNameError"></small>
+              </label>
+              <label>
+                <span>Driver phone</span>
+                <input
+                  id="requestModalDriverPhone"
+                  type="tel"
+                  inputmode="numeric"
+                  maxlength="10"
+                  placeholder="0241234567"
+                />
+                <small id="requestModalDriverPhoneError"></small>
+              </label>
+              <label>
+                <span>Approving authority</span>
+                <input id="requestModalApprovingAuthority" type="text" placeholder="Approving authority name" />
+                <small id="requestModalApprovingAuthorityError"></small>
+              </label>
+              <label>
                 <span>Admin note</span>
                 <textarea id="requestModalAdminNote" rows="4" placeholder="Optional note to the requester"></textarea>
               </label>
               <div class="decision-actions">
-                <button id="requestModalApproveButton" type="button" class="primary-button">Approve</button>
+                <button id="requestModalApproveButton" type="button" class="primary-button">Approve to pay</button>
                 <button id="requestModalDeclineButton" type="button" class="ghost-button">Decline</button>
               </div>
             </div>
 
             <div id="requestModalProcessedPanel" class="request-processed-panel" hidden>
-              <p class="feature-label">Processed request</p>
+              <p class="feature-label">Request stage</p>
               <p id="requestModalProcessedText" class="panel-copy"></p>
             </div>
           </section>

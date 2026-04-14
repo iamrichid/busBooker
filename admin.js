@@ -21,6 +21,12 @@ const requestModalProcessedPanel = document.querySelector("#requestModalProcesse
 const requestModalProcessedText = document.querySelector("#requestModalProcessedText");
 const requestModalVehicleSelect = document.querySelector("#requestModalVehicleSelect");
 const requestModalVehicleError = document.querySelector("#requestModalVehicleError");
+const requestModalDriverName = document.querySelector("#requestModalDriverName");
+const requestModalDriverNameError = document.querySelector("#requestModalDriverNameError");
+const requestModalDriverPhone = document.querySelector("#requestModalDriverPhone");
+const requestModalDriverPhoneError = document.querySelector("#requestModalDriverPhoneError");
+const requestModalApprovingAuthority = document.querySelector("#requestModalApprovingAuthority");
+const requestModalApprovingAuthorityError = document.querySelector("#requestModalApprovingAuthorityError");
 const requestModalAdminNote = document.querySelector("#requestModalAdminNote");
 const requestModalApproveButton = document.querySelector("#requestModalApproveButton");
 const requestModalDeclineButton = document.querySelector("#requestModalDeclineButton");
@@ -28,6 +34,7 @@ const closeRequestModalButton = document.querySelector("#closeRequestModalButton
 
 const summaryNodes = {
   approved: document.querySelector("#summaryApproved"),
+  awaiting_payment: document.querySelector("#summaryAwaitingPayment"),
   declined: document.querySelector("#summaryDeclined"),
   pending: document.querySelector("#summaryPending"),
 };
@@ -47,8 +54,12 @@ signInForm.addEventListener("submit", handleSignIn);
 refreshBookingsButton?.addEventListener("click", () => loadBookings());
 logoutButton?.addEventListener("click", logout);
 closeRequestModalButton?.addEventListener("click", closeRequestModal);
-requestModalApproveButton?.addEventListener("click", () => submitModalDecision("approved"));
+requestModalApproveButton?.addEventListener("click", () => submitModalDecision(getActiveApprovalDecision()));
 requestModalDeclineButton?.addEventListener("click", () => submitModalDecision("declined"));
+requestModalDriverPhone?.addEventListener("input", () => {
+  requestModalDriverPhone.value = requestModalDriverPhone.value.replace(/\D/g, "").slice(0, 10);
+  requestModalDriverPhoneError.textContent = "";
+});
 
 if (requestModal) {
   requestModal.addEventListener("click", (event) => {
@@ -234,6 +245,7 @@ function renderBookings(bookings) {
 
   const counts = {
     approved: 0,
+    awaiting_payment: 0,
     declined: 0,
     pending: 0,
   };
@@ -288,12 +300,10 @@ function buildRow(booking) {
   const badge = document.createElement("span");
   badge.className = "status-badge";
   badge.dataset.status = booking.status;
-  badge.textContent = booking.status;
+  badge.textContent = getStatusLabel(booking.status);
   statusCell.append(badge);
 
-  vehicleCell.textContent =
-    booking.assignedVehicleLabel ||
-    (booking.status === "pending" ? `${booking.availableVehicles?.length || 0} available` : "Not assigned");
+  vehicleCell.textContent = getStageNote(booking);
 
   const actionWrap = document.createElement("div");
   actionWrap.className = "row-actions";
@@ -305,11 +315,17 @@ function buildRow(booking) {
   viewButton.addEventListener("click", () => openRequestModal(booking.id));
   actionWrap.append(viewButton);
 
-  if (booking.status === "pending") {
+  if (booking.status === "pending" || booking.status === "awaiting_payment") {
     const approveButton = document.createElement("button");
     approveButton.type = "button";
     approveButton.className = "primary-button row-button";
-    approveButton.textContent = "Approve";
+    approveButton.textContent =
+      booking.status === "pending"
+        ? "Approve to pay"
+        : booking.paymentStatus === "confirmed"
+          ? "Release bus"
+          : "Waiting for payment";
+    approveButton.disabled = booking.status === "awaiting_payment" && booking.paymentStatus !== "confirmed";
     approveButton.addEventListener("click", () => openRequestModal(booking.id, { focusDecision: true }));
 
     const declineButton = document.createElement("button");
@@ -339,7 +355,13 @@ function openRequestModal(bookingId, options = {}) {
   requestModalMeta.textContent = `${formatDateRange(fromDate, toDate)} • ${formatSlot(booking)} • ${booking.requesterName}`;
   requestModalDetails.replaceChildren();
   requestModalVehicleError.textContent = "";
+  requestModalDriverNameError.textContent = "";
+  requestModalDriverPhoneError.textContent = "";
+  requestModalApprovingAuthorityError.textContent = "";
   requestModalAdminNote.value = booking.adminNotes || "";
+  requestModalDriverName.value = booking.driverName || "";
+  requestModalDriverPhone.value = booking.driverPhone || "";
+  requestModalApprovingAuthority.value = booking.approvingAuthorityName || state.adminName || "";
 
   const detailPairs = [
     ["Member", booking.requesterName],
@@ -348,13 +370,23 @@ function openRequestModal(bookingId, options = {}) {
     ["Email", booking.requesterEmail || "Not provided"],
     ["Phone", booking.phone || "Not provided"],
     ["From date", formatDate(fromDate)],
+    ["Start time", booking.startTime || "Not provided"],
     ["To date", formatDate(toDate)],
+    ["End time", booking.endTime || "Not provided"],
     ["Pickup", booking.pickupLocation],
+    ["End location", booking.endLocation || booking.pickupLocation || "Not provided"],
     ["Destination", booking.destination],
+    ["Passengers", String(booking.passengerCount || 0)],
     ["Purpose", booking.purpose],
     ["Notes", booking.notes || "None"],
+    ["Terms accepted", booking.termsAccepted ? "Yes" : "No"],
+    ["Amount charged", formatMoney(booking.amountCharged)],
+    ["Amount paid", formatMoney(booking.amountPaid)],
+    ["Balance", formatMoney(booking.balance)],
+    ["Payment status", booking.paymentStatus || "pending"],
+    ["Tracking code", booking.trackingCode || "Not available"],
     ["Submitted", formatDateTime(booking.submittedAt)],
-    ["Status", booking.status],
+    ["Status", getStatusLabel(booking.status)],
   ];
 
   if (booking.assignedVehicleLabel) {
@@ -362,6 +394,10 @@ function openRequestModal(bookingId, options = {}) {
   }
 
   if (booking.processedAt) {
+    detailPairs.push(["Approving authority", booking.approvingAuthorityName || "Not provided"]);
+    detailPairs.push(["Vehicle reg. no.", booking.vehicleRegNo || "Not assigned"]);
+    detailPairs.push(["Driver", booking.driverName || "Not assigned"]);
+    detailPairs.push(["Driver phone", booking.driverPhone || "Not assigned"]);
     detailPairs.push(["Processed by", booking.processedBy || "Unknown"]);
     detailPairs.push(["Processed at", formatDateTime(booking.processedAt)]);
     detailPairs.push(["Admin note", booking.adminNotes || "None"]);
@@ -375,11 +411,11 @@ function openRequestModal(bookingId, options = {}) {
     requestModalDetails.append(dt, dd);
   });
 
-  if (booking.status === "pending") {
+  if (booking.status === "pending" || booking.status === "awaiting_payment") {
     requestModalDecisionPanel.hidden = false;
     requestModalProcessedPanel.hidden = true;
     populateVehicleSelect(requestModalVehicleSelect, booking.availableVehicles || []);
-    requestModalApproveButton.disabled = false;
+    configureDecisionPanel(booking);
     requestModalDeclineButton.disabled = false;
   } else {
     requestModalDecisionPanel.hidden = true;
@@ -422,6 +458,9 @@ async function submitModalDecision(decision) {
   }
 
   requestModalVehicleError.textContent = "";
+  requestModalDriverNameError.textContent = "";
+  requestModalDriverPhoneError.textContent = "";
+  requestModalApprovingAuthorityError.textContent = "";
   requestModalApproveButton.disabled = true;
   requestModalDeclineButton.disabled = true;
 
@@ -433,7 +472,10 @@ async function submitModalDecision(decision) {
       },
       body: JSON.stringify({
         adminNotes: requestModalAdminNote.value,
+        approvingAuthorityName: requestModalApprovingAuthority.value,
         decision,
+        driverName: requestModalDriverName.value,
+        driverPhone: requestModalDriverPhone.value,
         selectedVehicleId: requestModalVehicleSelect.value,
       }),
     });
@@ -449,6 +491,15 @@ async function submitModalDecision(decision) {
 
       if (result.fields?.selectedVehicleId) {
         requestModalVehicleError.textContent = result.fields.selectedVehicleId;
+      }
+      if (result.fields?.driverName) {
+        requestModalDriverNameError.textContent = result.fields.driverName;
+      }
+      if (result.fields?.driverPhone) {
+        requestModalDriverPhoneError.textContent = result.fields.driverPhone;
+      }
+      if (result.fields?.approvingAuthorityName) {
+        requestModalApprovingAuthorityError.textContent = result.fields.approvingAuthorityName;
       }
       setAdminMessage(result.error || "The decision could not be saved.", "error");
       return;
@@ -467,15 +518,33 @@ async function submitModalDecision(decision) {
   } catch (error) {
     setAdminMessage(error.message || "The server could not be reached.", "error");
   } finally {
-    requestModalApproveButton.disabled = false;
+    const currentBooking = state.bookings.find((item) => item.id === state.activeBookingId);
+    if (currentBooking && (currentBooking.status === "pending" || currentBooking.status === "awaiting_payment")) {
+      configureDecisionPanel(currentBooking);
+    } else {
+      requestModalApproveButton.disabled = false;
+    }
     requestModalDeclineButton.disabled = false;
   }
+}
+
+function getActiveApprovalDecision() {
+  const booking = state.bookings.find((item) => item.id === state.activeBookingId);
+
+  if (booking?.status === "pending") {
+    return "awaiting_payment";
+  }
+
+  return "approved";
 }
 
 async function quickDecline(bookingId) {
   state.activeBookingId = bookingId;
   requestModalAdminNote.value = "";
   requestModalVehicleSelect.value = "";
+  requestModalDriverName.value = "";
+  requestModalDriverPhone.value = "";
+  requestModalApprovingAuthority.value = state.adminName || "";
   await submitModalDecision("declined");
 }
 
@@ -564,6 +633,69 @@ function populateVehicleSelect(selectNode, vehicles) {
   selectNode.disabled = vehicles.length === 0;
 }
 
+function configureDecisionPanel(booking) {
+  const isReleaseStage = booking.status === "awaiting_payment" && booking.paymentStatus === "confirmed";
+  const isWaitingForPayment = booking.status === "awaiting_payment" && booking.paymentStatus !== "confirmed";
+  const releaseFields = [
+    requestModalVehicleSelect.closest("label"),
+    requestModalDriverName.closest("label"),
+    requestModalDriverPhone.closest("label"),
+    requestModalApprovingAuthority.closest("label"),
+  ].filter(Boolean);
+
+  releaseFields.forEach((node) => {
+    node.hidden = !isReleaseStage;
+  });
+
+  requestModalApproveButton.textContent =
+    booking.status === "pending"
+      ? "Approve to pay"
+      : isReleaseStage
+        ? "Release bus"
+        : "Waiting for payment";
+  requestModalApproveButton.disabled = isWaitingForPayment;
+
+  if (isWaitingForPayment) {
+    requestModalVehicleError.textContent = "Finance must confirm payment before release.";
+  }
+}
+
+function getStatusLabel(status) {
+  if (status === "awaiting_payment") {
+    return "Awaiting payment";
+  }
+
+  if (status === "approved") {
+    return "Released";
+  }
+
+  if (status === "declined") {
+    return "Declined";
+  }
+
+  return "Pending review";
+}
+
+function getStageNote(booking) {
+  if (booking.status === "pending") {
+    return `${booking.availableVehicles?.length || 0} available for review`;
+  }
+
+  if (booking.status === "awaiting_payment") {
+    return booking.paymentStatus === "confirmed" ? "Payment confirmed, ready to release" : "Waiting for finance";
+  }
+
+  if (booking.status === "approved") {
+    return booking.assignedVehicleLabel || "Bus released";
+  }
+
+  if (booking.status === "declined") {
+    return "Not released";
+  }
+
+  return "Review needed";
+}
+
 function escapeHtml(value) {
   return String(value)
     .replaceAll("&", "&amp;")
@@ -571,4 +703,10 @@ function escapeHtml(value) {
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#39;");
+}
+
+function formatMoney(value) {
+  const amount = Number(value);
+  const safeAmount = Number.isFinite(amount) ? amount : 0;
+  return `GH₵ ${safeAmount.toFixed(2)}`;
 }

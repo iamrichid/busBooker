@@ -32,7 +32,6 @@
   <body class="member-shell request-page font-sans antialiased text-slate-900 bg-white">
     <main class="page page-member">
       <section class="request-topbar">
-        <a href="/" class="ghost-button">Back to Home</a>
         <div>
           <p class="eyebrow">Booking Request</p>
           <h1 class="font-display">Church Bus Request Form</h1>
@@ -44,7 +43,7 @@
           <h2>Before You Submit</h2>
           <ul>
             <li>Church members and outside parties can submit requests.</li>
-            <li>Provide at least one contact method.</li>
+            <li>Every required field must be completed before submission.</li>
             <li>Requests are only final after admin approval.</li>
           </ul>
           <p>
@@ -60,8 +59,8 @@
 
           <form id="booking-form" class="booking-form" novalidate>
             <div class="full-width request-section">
-              <h2>Member Details</h2>
-              <p>Select member status. Membership number is required only for members.</p>
+              <h2>Contact Information</h2>
+              <p>All fields below are mandatory for submission.</p>
             </div>
 
             <label>
@@ -92,15 +91,15 @@
             </label>
 
             <label>
-              <span>Ministry or department</span>
+              <span>Name of organisation</span>
               <input
-                name="ministryName"
+                name="organizationName"
                 type="text"
                 autocomplete="organization"
-                placeholder="Youth Ministry"
+                placeholder="Youth Ministry / External Organisation"
                 required
               />
-              <small data-error-for="ministryName"></small>
+              <small data-error-for="organizationName"></small>
             </label>
 
             <label>
@@ -112,12 +111,13 @@
                 inputmode="email"
                 autocomplete="email"
                 placeholder="member@yourchurch.org"
+                required
               />
               <small data-error-for="requesterEmail"></small>
             </label>
 
             <label>
-              <span>Phone number</span>
+              <span>Mobile number</span>
               <input
                 id="phone"
                 name="phone"
@@ -126,14 +126,10 @@
                 maxlength="10"
                 autocomplete="tel"
                 placeholder="0241234567"
+                required
               />
               <small data-error-for="phone"></small>
             </label>
-
-            <div class="full-width request-section">
-              <h2>Trip Details</h2>
-              <p>Add complete event and schedule details to speed up approval.</p>
-            </div>
 
             <label>
               <span>Event name</span>
@@ -141,10 +137,42 @@
               <small data-error-for="eventName"></small>
             </label>
 
+            <div class="full-width request-section">
+              <h2>Journey Details</h2>
+              <p>Provide full date, time, and location details.</p>
+            </div>
+
             <label>
-              <span>Purpose of trip</span>
+              <span>Purpose</span>
               <textarea name="purpose" rows="3" placeholder="Describe why the bus is needed." required></textarea>
               <small data-error-for="purpose"></small>
+            </label>
+
+            <label>
+              <span>Destination(s)</span>
+              <input name="destination" type="text" placeholder="Kasoa prayer center" required />
+              <small data-error-for="destination"></small>
+            </label>
+
+            <label>
+              <span>Set-off location</span>
+              <input name="pickupLocation" type="text" placeholder="Church auditorium" required />
+              <small data-error-for="pickupLocation"></small>
+            </label>
+
+            <label>
+              <span>End location mode</span>
+              <select id="endLocationMode" name="endLocationMode" required>
+                <option value="same_as_setoff">Same as set-off</option>
+                <option value="other">Other location</option>
+              </select>
+              <small data-error-for="endLocationMode"></small>
+            </label>
+
+            <label id="endLocationWrap">
+              <span>End location</span>
+              <input name="endLocation" type="text" placeholder="Enter end location" />
+              <small data-error-for="endLocation"></small>
             </label>
 
             <label>
@@ -154,9 +182,21 @@
             </label>
 
             <label>
+              <span>Start time</span>
+              <input id="startTime" name="startTime" type="time" required />
+              <small data-error-for="startTime"></small>
+            </label>
+
+            <label>
               <span>To date</span>
               <input id="toDate" name="toDate" type="date" required />
               <small data-error-for="toDate"></small>
+            </label>
+
+            <label>
+              <span>End time</span>
+              <input id="endTime" name="endTime" type="time" required />
+              <small data-error-for="endTime"></small>
             </label>
 
             <label>
@@ -178,28 +218,34 @@
             </label>
 
             <label>
-              <span>Pickup location</span>
-              <input name="pickupLocation" type="text" placeholder="Church auditorium" required />
-              <small data-error-for="pickupLocation"></small>
-            </label>
-
-            <label>
-              <span>Destination</span>
-              <input name="destination" type="text" placeholder="Kasoa prayer center" required />
-              <small data-error-for="destination"></small>
+              <span>Number of people</span>
+              <input name="passengerCount" type="number" min="1" step="1" placeholder="24" required />
+              <small data-error-for="passengerCount"></small>
             </label>
 
             <label class="full-width">
               <span>Extra notes</span>
-              <textarea name="notes" rows="3" placeholder="Add any timing or coordination notes (optional)."></textarea>
+              <textarea name="notes" rows="3" placeholder="Add any timing or coordination notes."></textarea>
+            </label>
+
+            <div class="full-width request-section">
+              <h2>Declaration</h2>
+              <p>You must accept the transport terms to submit the request.</p>
+            </div>
+
+            <label class="full-width">
+              <span class="sr-only">Terms agreement</span>
+              <span style="display: inline-flex; align-items: center; gap: 0.5rem; font-weight: 500;">
+                <input id="termsAccepted" name="termsAccepted" type="checkbox" style="width: auto; min-height: auto;" />
+                I have read and agree to the vehicle hiring terms and conditions.
+              </span>
+              <small data-error-for="termsAccepted"></small>
             </label>
 
             <div class="full-width form-actions">
               <button id="submitButton" class="primary-button" type="submit">Submit request</button>
               <a href="/" class="ghost-button">Cancel</a>
             </div>
-
-            <p class="full-width helper-text">Provide at least one contact method: email or 10-digit Ghana phone.</p>
 
             <div id="formMessage" class="full-width form-message" aria-live="polite"></div>
           </form>

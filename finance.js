@@ -16,6 +16,12 @@ const financePaymentModal = document.querySelector("#financePaymentModal");
 const financePaymentModalTitle = document.querySelector("#financePaymentModalTitle");
 const financePaymentModalMeta = document.querySelector("#financePaymentModalMeta");
 const financePaymentDetails = document.querySelector("#financePaymentDetails");
+const financeAmountCharged = document.querySelector("#financeAmountCharged");
+const financeAmountChargedError = document.querySelector("#financeAmountChargedError");
+const financeAmountPaid = document.querySelector("#financeAmountPaid");
+const financeAmountPaidError = document.querySelector("#financeAmountPaidError");
+const financeBalance = document.querySelector("#financeBalance");
+const financeBalanceError = document.querySelector("#financeBalanceError");
 const financePaymentReference = document.querySelector("#financePaymentReference");
 const financePaymentReferenceError = document.querySelector("#financePaymentReferenceError");
 const financePaymentNotes = document.querySelector("#financePaymentNotes");
@@ -192,11 +198,11 @@ function buildRow(booking) {
   `;
   fragment.querySelector('[data-col="requester"]').textContent = booking.requesterName || "Unknown";
   fragment.querySelector('[data-col="event"]').textContent = booking.eventName || "Untitled request";
-  fragment.querySelector('[data-col="booking"]').textContent = booking.status || "pending";
+  fragment.querySelector('[data-col="booking"]').textContent = getStatusLabel(booking.status || "pending");
 
   const paymentCell = fragment.querySelector('[data-col="payment"]');
   paymentCell.innerHTML = `
-    <div class="table-primary">${booking.paymentStatus || "pending"}</div>
+    <div class="table-primary">${getPaymentLabel(booking.paymentStatus)}</div>
     <div class="table-secondary">${booking.paymentReference || "No reference"}</div>
   `;
 
@@ -211,7 +217,7 @@ function buildRow(booking) {
   openButton.addEventListener("click", () => openPaymentModal(booking.id));
   actions.append(openButton);
 
-  if (booking.status === "pending" && booking.paymentStatus !== "confirmed") {
+  if (booking.status === "awaiting_payment" && booking.paymentStatus !== "confirmed") {
     const confirmButton = document.createElement("button");
     confirmButton.type = "button";
     confirmButton.className = "primary-button row-button";
@@ -238,17 +244,27 @@ function openPaymentModal(bookingId, options = {}) {
   financePaymentModalTitle.textContent = booking.eventName || "Confirm payment";
   financePaymentModalMeta.textContent = `${formatDateRange(fromDate, toDate)} • ${booking.requesterName}`;
   financePaymentDetails.replaceChildren();
+  financeAmountCharged.value = formatMoneyInput(booking.amountCharged);
+  financeAmountPaid.value = formatMoneyInput(booking.amountPaid);
+  financeBalance.value = formatMoneyInput(booking.balance);
   financePaymentReference.value = booking.paymentReference || "";
   financePaymentNotes.value = booking.paymentNotes || "";
+  financeAmountChargedError.textContent = "";
+  financeAmountPaidError.textContent = "";
+  financeBalanceError.textContent = "";
   financePaymentReferenceError.textContent = "";
 
   const details = [
     ["Requester", booking.requesterName || "Unknown"],
-    ["Status", booking.status || "pending"],
-    ["Payment status", booking.paymentStatus || "pending"],
+    ["Status", getStatusLabel(booking.status || "pending")],
+    ["Payment status", getPaymentLabel(booking.paymentStatus)],
+    ["Tracking code", booking.trackingCode || "Not available"],
     ["Booking type", booking.bookingType === "full_day" ? "Full day" : "Half day"],
     ["Slot", formatSlot(booking)],
   ];
+
+  confirmPaymentButton.disabled = booking.status !== "awaiting_payment" || booking.paymentStatus === "confirmed";
+  confirmPaymentButton.textContent = getPaymentActionLabel(booking);
 
   details.forEach(([term, value]) => {
     const dt = document.createElement("dt");
@@ -290,6 +306,9 @@ async function submitPaymentConfirmation() {
   }
 
   confirmPaymentButton.disabled = true;
+  financeAmountChargedError.textContent = "";
+  financeAmountPaidError.textContent = "";
+  financeBalanceError.textContent = "";
   financePaymentReferenceError.textContent = "";
 
   try {
@@ -299,6 +318,9 @@ async function submitPaymentConfirmation() {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
+        amountCharged: financeAmountCharged.value,
+        amountPaid: financeAmountPaid.value,
+        balance: financeBalance.value,
         paymentReference: financePaymentReference.value,
         paymentNotes: financePaymentNotes.value,
       }),
@@ -315,6 +337,15 @@ async function submitPaymentConfirmation() {
       if (result.fields?.paymentReference) {
         financePaymentReferenceError.textContent = result.fields.paymentReference;
       }
+      if (result.fields?.amountCharged) {
+        financeAmountChargedError.textContent = result.fields.amountCharged;
+      }
+      if (result.fields?.amountPaid) {
+        financeAmountPaidError.textContent = result.fields.amountPaid;
+      }
+      if (result.fields?.balance) {
+        financeBalanceError.textContent = result.fields.balance;
+      }
       setFinanceMessage(result.error || "Could not confirm payment.", "error");
       return;
     }
@@ -326,6 +357,7 @@ async function submitPaymentConfirmation() {
     setFinanceMessage(error.message || "The server could not be reached.", "error");
   } finally {
     confirmPaymentButton.disabled = false;
+    confirmPaymentButton.textContent = "Confirm payment";
   }
 }
 
@@ -409,4 +441,48 @@ function formatSlot(booking) {
   }
 
   return booking.timeSlot === "morning" ? "Half day • morning" : "Half day • afternoon";
+}
+
+function getStatusLabel(status) {
+  if (status === "awaiting_payment") {
+    return "Awaiting payment";
+  }
+
+  if (status === "approved") {
+    return "Released";
+  }
+
+  if (status === "declined") {
+    return "Declined";
+  }
+
+  return "Pending review";
+}
+
+function getPaymentLabel(status) {
+  if (status === "confirmed") {
+    return "Confirmed";
+  }
+
+  return "Pending";
+}
+
+function getPaymentActionLabel(booking) {
+  if (booking.status === "awaiting_payment" && booking.paymentStatus !== "confirmed") {
+    return "Confirm payment";
+  }
+
+  if (booking.paymentStatus === "confirmed") {
+    return "Payment confirmed";
+  }
+
+  return "Waiting for admin approval";
+}
+
+function formatMoneyInput(value) {
+  if (typeof value !== "number" || Number.isNaN(value)) {
+    return "";
+  }
+
+  return String(value);
 }

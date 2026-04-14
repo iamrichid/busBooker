@@ -10,9 +10,13 @@ export async function notifyBookingSubmitted(booking) {
     `Your bus request for ${dateLabel} has been submitted successfully and is now waiting for approval.`,
     `Booking type: ${booking.bookingType === "full_day" ? "Full day" : `Half day (${booking.timeSlot})`}`,
     `Event: ${booking.eventName}`,
+    booking.trackingCode ? `Tracking code: ${booking.trackingCode}` : null,
+    booking.trackingCode ? `Track request: /track?code=${booking.trackingCode}` : null,
     "",
     "We will send you another update after the request is reviewed.",
-  ].join("\n");
+  ]
+    .filter(Boolean)
+    .join("\n");
 
   return sendNotifications({
     booking,
@@ -23,18 +27,16 @@ export async function notifyBookingSubmitted(booking) {
 }
 
 export async function notifyBookingDecision(booking) {
-  const wasApproved = booking.status === "approved";
   const dateLabel = getDateLabel(booking);
+  const decisionText = getDecisionText(booking.status);
   const message = [
     `Hello ${booking.requesterName},`,
     "",
-    `Your church bus request for ${dateLabel} has been ${wasApproved ? "approved" : "declined"}.`,
+    `Your church bus request for ${dateLabel} has been ${decisionText}.`,
     `Event: ${booking.eventName}`,
     booking.adminNotes ? `Admin note: ${booking.adminNotes}` : null,
     "",
-    wasApproved
-      ? "Please keep time and passenger details unchanged unless the transport team agrees to an update."
-      : "If you still need the bus, please contact the transport team or submit a new request for another slot.",
+    getDecisionInstruction(booking.status),
   ]
     .filter(Boolean)
     .join("\n");
@@ -43,8 +45,32 @@ export async function notifyBookingDecision(booking) {
     booking,
     eventType: "decision",
     message,
-    subject: `Church bus request ${booking.status}`,
+    subject: `Church bus request ${getDecisionText(booking.status)}`,
   });
+}
+
+function getDecisionText(status) {
+  if (status === "awaiting_payment") {
+    return "approved to proceed to payment";
+  }
+
+  if (status === "approved") {
+    return "released";
+  }
+
+  return "declined";
+}
+
+function getDecisionInstruction(status) {
+  if (status === "awaiting_payment") {
+    return "Please contact the accounts desk to complete payment.";
+  }
+
+  if (status === "approved") {
+    return "The bus has been released. Please keep time and passenger details unchanged unless the transport team agrees to an update.";
+  }
+
+  return "If you still need the bus, please contact the transport team or submit a new request for another slot.";
 }
 
 async function sendNotifications({ booking, eventType, message, subject }) {

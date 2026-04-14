@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import {
+  buildBookingRecord,
   findConflict,
   hasScheduleConflict,
   sanitizeDecisionInput,
@@ -11,17 +12,23 @@ import {
 const validBooking = {
   bookingType: "half_day",
   destination: "Kasoa prayer center",
+  endLocation: "Church auditorium",
+  endLocationMode: "same_as_setoff",
+  endTime: "16:30",
   eventName: "Choir outreach",
   fromDate: "2099-08-15",
   memberStatus: "yes",
   membershipNumber: "PCG-4421",
-  ministryName: "Choir",
+  organizationName: "Choir",
   notes: "",
+  passengerCount: 24,
   phone: "0241234567",
   pickupLocation: "Church auditorium",
   purpose: "Transport choir team for ministry.",
   requesterEmail: "choir@church.org",
   requesterName: "Martha Owusu",
+  startTime: "08:30",
+  termsAccepted: "on",
   timeSlot: "morning",
   toDate: "2099-08-15",
 };
@@ -32,13 +39,21 @@ test("validateBookingRequest accepts a complete future booking", () => {
   assert.equal(result.value.timeSlot, "morning");
 });
 
-test("validateBookingRequest accepts a booking with only one contact method", () => {
+test("buildBookingRecord creates a public tracking code", () => {
+  const result = validateBookingRequest(validBooking);
+  const record = buildBookingRecord(result.value);
+
+  assert.match(record.trackingCode, /^BUS-[A-F0-9]{8}$/);
+});
+
+test("validateBookingRequest requires email address", () => {
   const result = validateBookingRequest({
     ...validBooking,
     requesterEmail: "",
   });
 
-  assert.equal(result.ok, true);
+  assert.equal(result.ok, false);
+  assert.equal(result.errors.requesterEmail, "Email address is required.");
 });
 
 test("validateBookingRequest requires a membership number for members", () => {
@@ -55,6 +70,7 @@ test("validateBookingRequest allows non-members", () => {
   const result = validateBookingRequest({
     ...validBooking,
     memberStatus: "no",
+    membershipNumber: "",
   });
 
   assert.equal(result.ok, true);
@@ -184,4 +200,13 @@ test("sanitizeDecisionInput requires a bus assignment before approval", () => {
 
   assert.equal(result.ok, false);
   assert.equal(result.errors.selectedVehicleId, "Please assign a bus before approval.");
+});
+
+test("sanitizeDecisionInput allows approval to proceed to payment without bus release details", () => {
+  const result = sanitizeDecisionInput({
+    adminName: "Admin",
+    decision: "awaiting_payment",
+  });
+
+  assert.equal(result.ok, true);
 });
