@@ -6,8 +6,10 @@ import { HttpError } from "./http.js";
 const dataDir = path.join(process.cwd(), "data");
 const bookingsFile = path.join(dataDir, "bookings.json");
 const notificationsFile = path.join(dataDir, "notifications.log");
+const notificationSettingsFile = path.join(dataDir, "notification-settings.json");
 const bookingBlobPrefix = "bus-booker/bookings/";
 const notificationBlobPrefix = "bus-booker/notifications/";
+const notificationSettingsBlobPath = "bus-booker/settings/notification-settings.json";
 
 export async function ensureDataFiles() {
   if (usesBlobStorage()) {
@@ -23,6 +25,16 @@ export async function ensureDataFiles() {
   } catch (error) {
     if (error.code === "ENOENT") {
       await writeFile(bookingsFile, "[]\n", "utf8");
+    } else {
+      throw error;
+    }
+  }
+
+  try {
+    await readFile(notificationSettingsFile, "utf8");
+  } catch (error) {
+    if (error.code === "ENOENT") {
+      await writeFile(notificationSettingsFile, `${JSON.stringify(getDefaultNotificationSettings(), null, 2)}\n`, "utf8");
       return;
     }
 
@@ -68,6 +80,41 @@ export async function appendNotificationLog(entry) {
 
   await ensureDataFiles();
   await appendFile(notificationsFile, `${JSON.stringify(entry)}\n`, "utf8");
+}
+
+export async function readNotificationSettings() {
+  if (usesBlobStorage()) {
+    const blobSettings = await readBlobJson(notificationSettingsBlobPath);
+    return normalizeNotificationSettings(blobSettings);
+  }
+
+  assertWritableLocalStorage();
+  await ensureDataFiles();
+  const raw = await readFile(notificationSettingsFile, "utf8");
+  return normalizeNotificationSettings(JSON.parse(raw));
+}
+
+export async function saveNotificationSettings(settings) {
+  const normalized = normalizeNotificationSettings(settings);
+
+  if (usesBlobStorage()) {
+    const { put } = await loadBlobSdk();
+    await put(
+      notificationSettingsBlobPath,
+      `${JSON.stringify(normalized, null, 2)}\n`,
+      {
+        access: "private",
+        addRandomSuffix: false,
+        contentType: "application/json",
+      },
+    );
+    return normalized;
+  }
+
+  assertWritableLocalStorage();
+  await ensureDataFiles();
+  await writeFile(notificationSettingsFile, `${JSON.stringify(normalized, null, 2)}\n`, "utf8");
+  return normalized;
 }
 
 export function usesBlobStorage() {
@@ -189,6 +236,40 @@ function parseBookingBlobPath(pathname) {
 
 function createVersionKey() {
   return `${String(Date.now()).padStart(13, "0")}-${randomUUID()}.json`;
+}
+
+function normalizeNotificationSettings(settings = {}) {
+  const fallback = getDefaultNotificationSettings();
+  return {
+    adminPhones: normalizePhoneList(settings.adminPhones, fallback.adminPhones),
+    financePhones: normalizePhoneList(settings.financePhones, fallback.financePhones),
+  };
+}
+
+function normalizePhoneList(value, fallback = []) {
+  if (!Array.isArray(value)) {
+    return [...fallback];
+  }
+
+  const phones = value
+    .map((entry) => String(entry || "").trim())
+    .filter(Boolean);
+
+  return [...new Set(phones)];
+}
+
+function getDefaultNotificationSettings() {
+  return {
+    adminPhones: readEnvPhoneList(process.env.ADMIN_NOTIFICATION_PHONES),
+    financePhones: readEnvPhoneList(process.env.FINANCE_NOTIFICATION_PHONES),
+  };
+}
+
+function readEnvPhoneList(value) {
+  return String(value || "")
+    .split(/[,\n]/)
+    .map((entry) => entry.trim())
+    .filter(Boolean);
 }
 
 async function loadBlobSdk() {

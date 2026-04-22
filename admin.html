@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Manrope:wght@400;500;600;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Source+Sans+3:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
     <script src="https://cdn.tailwindcss.com"></script>
@@ -17,11 +17,13 @@
         theme: {
           extend: {
             fontFamily: {
-              sans: ["Manrope", "Segoe UI", "Helvetica Neue", "Arial", "sans-serif"],
-              display: ["Fraunces", "Georgia", "serif"],
+              sans: ["Source Sans 3", "Segoe UI", "Helvetica Neue", "Arial", "sans-serif"],
+              display: ["Cormorant Garamond", "Georgia", "serif"],
             },
             colors: {
-              navy: "#11274a",
+              navy: "#123b74",
+              presbyRed: "#c7333a",
+              presbyGold: "#c8a64f",
             },
           },
         },
@@ -102,6 +104,45 @@
             <strong id="summaryDeclined">0</strong>
           </article>
         </div>
+
+        <section class="request-table-panel">
+          <div class="section-title">
+            <h3 class="font-display text-2xl leading-tight text-slate-900">Notification contacts</h3>
+          </div>
+
+          <form id="notificationSettingsForm" class="panel compact-settings-panel">
+            <p class="panel-copy">
+              Add the phone numbers that should receive workflow SMS updates. Use one number per line or separate
+              with commas.
+            </p>
+
+            <div class="booking-form compact-settings-grid">
+              <label>
+                <span>Admin release contacts</span>
+                <textarea
+                  id="adminContactPhones"
+                  rows="4"
+                  placeholder="0241234567&#10;0207654321"
+                ></textarea>
+                <small id="adminContactPhonesError"></small>
+              </label>
+
+              <label>
+                <span>Finance contacts</span>
+                <textarea
+                  id="financeContactPhones"
+                  rows="4"
+                  placeholder="0551234567&#10;0267654321"
+                ></textarea>
+                <small id="financeContactPhonesError"></small>
+              </label>
+            </div>
+
+            <div class="workspace-actions">
+              <button id="saveNotificationSettingsButton" class="primary-button" type="submit">Save contacts</button>
+            </div>
+          </form>
+        </section>
 
         <section class="request-table-panel">
           <div class="section-title">

@@ -14,7 +14,8 @@ A lightweight booking and approval system for a church with one shared bus, now 
 - Gives finance officers a payment confirmation screen at `/finance`
 - Uses signed `httpOnly` admin session cookies (no admin code stored in browser)
 - Sends optional email notifications with Resend
-- Sends optional SMS notifications with Twilio
+- Sends optional SMS notifications with cSMS
+- Lets admins save notification contact phone numbers without changing Vercel env vars
 
 ## Run it
 
@@ -52,9 +53,10 @@ BLOB_READ_WRITE_TOKEN=your-vercel-blob-read-write-token
 BUS_FLEET=Church Bus|PCG-001
 NOTIFICATION_FROM_EMAIL=transport@yourchurch.org
 RESEND_API_KEY=...
-TWILIO_ACCOUNT_SID=...
-TWILIO_AUTH_TOKEN=...
-TWILIO_FROM_NUMBER=...
+CSMS_API_KEY=...
+CSMS_SENDER_ID=YOUR_SENDER_ID
+ADMIN_NOTIFICATION_PHONES=0241234567,0207654321
+FINANCE_NOTIFICATION_PHONES=0551234567
 ```
 
 3. Deploy with Vercel
@@ -86,9 +88,10 @@ Email:
 
 SMS:
 
-- Set `TWILIO_ACCOUNT_SID`
-- Set `TWILIO_AUTH_TOKEN`
-- Set `TWILIO_FROM_NUMBER`
+- Preferred: set `CSMS_API_KEY` and `CSMS_SENDER_ID`
+- Optional fallback contact defaults: set `ADMIN_NOTIFICATION_PHONES` and `FINANCE_NOTIFICATION_PHONES`
+- Admins can later edit notification contacts inside the admin workspace and those saved values override day-to-day env changes
+- Fallback: set `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, and `TWILIO_FROM_NUMBER`
 
 If notification credentials are not configured, the app still works and logs skipped notification attempts to `data/notifications.log`.
 
@@ -100,6 +103,8 @@ If notification credentials are not configured, the app still works and logs ski
 - Keep both `FINANCE_ACCESS_CODE` and `FINANCE_SESSION_SECRET` private in environment variables.
 - The public booking form supports members and outside parties; membership number is required only for members.
 - Ghana phone numbers are validated as 10 digits.
+- SMS delivery now prefers cSMS and converts local Ghana numbers like `0241234567` to `233241234567` for the provider call.
+- The app can notify requester, admin contacts, and finance contacts as the request moves through submission, payment approval, payment confirmation, and release.
 - A request can only be approved after payment is confirmed and an available bus has been assigned.
 - Conflict checks use date ranges plus slot overlap rules.
 - On Vercel, each booking is stored as a private JSON blob version so updates stay durable without depending on the function filesystem.

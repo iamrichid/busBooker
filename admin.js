@@ -11,6 +11,12 @@ const activeAdminName = document.querySelector("#activeAdminName");
 const requestTableBody = document.querySelector("#requestTableBody");
 const requestTableCount = document.querySelector("#requestTableCount");
 const rowTemplate = document.querySelector("#requestRowTemplate");
+const notificationSettingsForm = document.querySelector("#notificationSettingsForm");
+const adminContactPhones = document.querySelector("#adminContactPhones");
+const financeContactPhones = document.querySelector("#financeContactPhones");
+const adminContactPhonesError = document.querySelector("#adminContactPhonesError");
+const financeContactPhonesError = document.querySelector("#financeContactPhonesError");
+const saveNotificationSettingsButton = document.querySelector("#saveNotificationSettingsButton");
 
 const requestModal = document.querySelector("#requestModal");
 const requestModalTitle = document.querySelector("#requestModalTitle");
@@ -45,6 +51,10 @@ const state = {
   fleet: [],
   bookings: [],
   activeBookingId: null,
+  notificationSettings: {
+    adminPhones: [],
+    financePhones: [],
+  },
 };
 
 adminNameInput.value = state.adminName;
@@ -53,6 +63,7 @@ setAdminMessage("Sign in to open the approval desk.", "neutral");
 signInForm.addEventListener("submit", handleSignIn);
 refreshBookingsButton?.addEventListener("click", () => loadBookings());
 logoutButton?.addEventListener("click", logout);
+notificationSettingsForm?.addEventListener("submit", handleSaveNotificationSettings);
 closeRequestModalButton?.addEventListener("click", closeRequestModal);
 requestModalApproveButton?.addEventListener("click", () => submitModalDecision(getActiveApprovalDecision()));
 requestModalDeclineButton?.addEventListener("click", () => submitModalDecision("declined"));
@@ -134,17 +145,27 @@ async function signIn({ restoreSession = false } = {}) {
       state.adminName = sessionResult.adminName || adminName;
     }
 
-    const response = await fetch("/api/admin/bookings");
-    const result = await response.json();
+    const [bookingsResponse, settingsResponse] = await Promise.all([
+      fetch("/api/admin/bookings"),
+      fetch("/api/admin/notification-settings"),
+    ]);
+    const result = await bookingsResponse.json();
+    const settingsResult = await settingsResponse.json();
 
-    if (!response.ok) {
+    if (!bookingsResponse.ok) {
       setAdminMessage(result.error || "Could not load admin bookings.", "error");
+      return;
+    }
+
+    if (!settingsResponse.ok) {
+      setAdminMessage(settingsResult.error || "Could not load notification contacts.", "error");
       return;
     }
 
     state.authenticated = true;
     state.fleet = result.fleet || [];
     state.bookings = result.bookings || [];
+    state.notificationSettings = settingsResult.settings || state.notificationSettings;
 
     localStorage.setItem("bus-booker-admin-name", state.adminName);
 
@@ -152,6 +173,7 @@ async function signIn({ restoreSession = false } = {}) {
     adminWorkspace.hidden = false;
     activeAdminName.textContent = state.adminName;
     renderBookings(state.bookings);
+    renderNotificationSettings();
     setAdminMessage(`Signed in as ${state.adminName}.`, "success");
   } catch (error) {
     setAdminMessage(error.message || "The server could not be reached.", "error");
@@ -204,6 +226,60 @@ async function loadBookings() {
   }
 }
 
+async function handleSaveNotificationSettings(event) {
+  event.preventDefault();
+
+  if (!state.authenticated) {
+    return;
+  }
+
+  adminContactPhonesError.textContent = "";
+  financeContactPhonesError.textContent = "";
+  saveNotificationSettingsButton.disabled = true;
+  setAdminMessage("Saving notification contacts...", "neutral");
+
+  try {
+    const response = await fetch("/api/admin/notification-settings", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        adminPhones: adminContactPhones.value,
+        financePhones: financeContactPhones.value,
+      }),
+    });
+    const result = await response.json();
+
+    if (!response.ok) {
+      if (response.status === 401) {
+        await logout({ silent: true });
+        setAdminMessage("Your admin session has expired. Please sign in again.", "error");
+        return;
+      }
+
+      if (result.fields?.adminPhones) {
+        adminContactPhonesError.textContent = result.fields.adminPhones;
+      }
+
+      if (result.fields?.financePhones) {
+        financeContactPhonesError.textContent = result.fields.financePhones;
+      }
+
+      setAdminMessage(result.error || "Could not save notification contacts.", "error");
+      return;
+    }
+
+    state.notificationSettings = result.settings || state.notificationSettings;
+    renderNotificationSettings();
+    setAdminMessage(result.message || "Notification contacts saved.", "success");
+  } catch (error) {
+    setAdminMessage(error.message || "The server could not be reached.", "error");
+  } finally {
+    saveNotificationSettingsButton.disabled = false;
+  }
+}
+
 async function logout(options = {}) {
   const { silent = false } = options;
 
@@ -221,6 +297,10 @@ async function logout(options = {}) {
   state.fleet = [];
   state.bookings = [];
   state.activeBookingId = null;
+  state.notificationSettings = {
+    adminPhones: [],
+    financePhones: [],
+  };
 
   adminAccessCodeInput.value = "";
   adminNameInput.value = "";
@@ -229,6 +309,10 @@ async function logout(options = {}) {
   activeAdminName.textContent = "";
   requestTableBody.replaceChildren();
   requestTableCount.textContent = "0";
+  adminContactPhones.value = "";
+  financeContactPhones.value = "";
+  adminContactPhonesError.textContent = "";
+  financeContactPhonesError.textContent = "";
   Object.values(summaryNodes).forEach((node) => {
     node.textContent = "0";
   });
@@ -612,6 +696,15 @@ function setAdminMessage(message, tone) {
   }
 
   adminMessage.dataset.tone = tone;
+}
+
+function renderNotificationSettings() {
+  adminContactPhones.value = formatPhoneList(state.notificationSettings.adminPhones);
+  financeContactPhones.value = formatPhoneList(state.notificationSettings.financePhones);
+}
+
+function formatPhoneList(list) {
+  return Array.isArray(list) ? list.join("\n") : "";
 }
 
 function populateVehicleSelect(selectNode, vehicles) {

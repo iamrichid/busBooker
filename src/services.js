@@ -7,11 +7,13 @@ import {
 } from "./bookings.js";
 import {
   notifyBookingDecision,
+  notifyPaymentConfirmed,
   notifyBookingSubmitted,
+  formatGhanaPhoneForStorage,
 } from "./notifications.js";
 import { findVehicleById, getAvailableVehicles, getFleet, getVehicleDisplay } from "./fleet.js";
 import { HttpError } from "./http.js";
-import { readBookings, saveBooking } from "./storage.js";
+import { readBookings, readNotificationSettings, saveBooking, saveNotificationSettings } from "./storage.js";
 
 export async function submitBookingRequest(input) {
   const validation = validateBookingRequest(input);
@@ -80,6 +82,32 @@ export async function listBookingsForAdmin() {
         right.submittedAt.localeCompare(left.submittedAt),
       ),
       fleet,
+    },
+    statusCode: 200,
+  };
+}
+
+export async function getNotificationSettingsForAdmin() {
+  return {
+    body: {
+      settings: await readNotificationSettings(),
+    },
+    statusCode: 200,
+  };
+}
+
+export async function updateNotificationSettingsForAdmin(input) {
+  const adminPhones = validateNotificationPhoneList(input.adminPhones, "adminPhones");
+  const financePhones = validateNotificationPhoneList(input.financePhones, "financePhones");
+  const settings = await saveNotificationSettings({
+    adminPhones,
+    financePhones,
+  });
+
+  return {
+    body: {
+      message: "Notification contacts saved successfully.",
+      settings,
     },
     statusCode: 200,
   };
@@ -292,10 +320,13 @@ export async function confirmBookingPayment(id, input) {
 
   await saveBooking(updated);
 
+  const notificationSummary = await notifyPaymentConfirmed(updated);
+
   return {
     body: {
       booking: updated,
       message: "Payment confirmed successfully.",
+      notifications: notificationSummary,
     },
     statusCode: 200,
   };
@@ -303,6 +334,41 @@ export async function confirmBookingPayment(id, input) {
 
 function roundMoney(value) {
   return Math.round(value * 100) / 100;
+}
+
+function validateNotificationPhoneList(value, fieldName) {
+  const entries = Array.isArray(value)
+    ? value
+    : String(value || "")
+        .split(/[,\n]/)
+        .map((entry) => entry.trim())
+        .filter(Boolean);
+
+  const normalized = [];
+  const invalid = [];
+
+  for (const entry of entries) {
+    const phone = formatGhanaPhoneForStorage(entry);
+
+    if (!phone) {
+      invalid.push(entry);
+      continue;
+    }
+
+    if (!normalized.includes(phone)) {
+      normalized.push(phone);
+    }
+  }
+
+  if (invalid.length > 0) {
+    throw new HttpError(400, "Please correct the notification contact numbers.", {
+      fields: {
+        [fieldName]: `Invalid Ghana number(s): ${invalid.join(", ")}`,
+      },
+    });
+  }
+
+  return normalized;
 }
 
 function canApplyDecision(booking, decision) {

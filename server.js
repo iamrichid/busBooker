@@ -22,10 +22,12 @@ import {
   listAvailability,
   listBookingsForAdmin,
   listBookingsForFinance,
+  getNotificationSettingsForAdmin,
   getBookingTracking,
   confirmBookingPayment,
   processAdminDecision,
   submitBookingRequest,
+  updateNotificationSettingsForAdmin,
 } from "./src/services.js";
 import { ensureDataFiles } from "./src/storage.js";
 
@@ -181,6 +183,29 @@ const server = createServer(async (request, response) => {
             "Set-Cookie": clearAdminSessionCookie({ secure: useSecureCookies }),
           },
         );
+      }
+
+      throw new HttpError(405, "Method not allowed.");
+    }
+
+    if (pathname === "/api/admin/notification-settings") {
+      const session = assertAdminAccess(request.headers);
+
+      if (request.method === "GET") {
+        const result = await getNotificationSettingsForAdmin();
+        return sendJson(response, result.statusCode, {
+          ...result.body,
+          adminName: session.adminName,
+        });
+      }
+
+      if (request.method === "POST") {
+        const body = await readJsonBody(request);
+        const result = await updateNotificationSettingsForAdmin(body);
+        return sendJson(response, result.statusCode, {
+          ...result.body,
+          adminName: session.adminName,
+        });
       }
 
       throw new HttpError(405, "Method not allowed.");

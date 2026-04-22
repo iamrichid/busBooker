@@ -67,7 +67,7 @@ export function authenticateAdminCredentials(accessCode, adminName) {
     });
   }
 
-  if (providedCode !== adminAccessCode) {
+  if (!safeEqual(providedCode, adminAccessCode)) {
     throw new HttpError(401, "Invalid admin access code.");
   }
 }
@@ -125,7 +125,7 @@ export function authenticateFinanceCredentials(accessCode, financeName) {
     });
   }
 
-  if (providedCode !== financeAccessCode) {
+  if (!safeEqual(providedCode, financeAccessCode)) {
     throw new HttpError(401, "Invalid finance access code.");
   }
 }

@@ -350,7 +350,14 @@ async function submitPaymentConfirmation() {
       return;
     }
 
-    setFinanceMessage(result.message || "Payment confirmed.", "success");
+    const notificationNotes = (result.notifications?.results || [])
+      .map((entry) => `${entry.channel}: ${entry.status}`)
+      .join(" | ");
+
+    setFinanceMessage(
+      `${result.message || "Payment confirmed."}${notificationNotes ? ` Notification status: ${notificationNotes}.` : ""}`,
+      "success",
+    );
     closePaymentModal();
     await loadBookings();
   } catch (error) {
