@@ -449,8 +449,10 @@ textarea {
   bottom: clamp(1rem, 5vh, 3rem);
   z-index: 1;
   width: min(520px, calc(100% - 2rem));
+  max-height: calc(100svh - 2rem);
   padding: 1rem;
   transform: translateX(-50%);
+  overflow-y: auto;
   border: 1px solid rgba(200, 166, 79, 0.38);
   border-radius: 8px;
   background: linear-gradient(180deg, rgba(11, 31, 64, 0.62) 0%, rgba(17, 47, 89, 0.52) 100%);
