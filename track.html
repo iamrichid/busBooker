@@ -33,6 +33,14 @@
   </head>
   <body class="member-shell request-page font-sans antialiased text-slate-900 bg-white">
     <main class="page page-member">
+      <section class="member-brand-strip">
+        <img src="/pcglogo.png" alt="Presbyterian Church of Ghana logo" class="member-brand-strip-logo" />
+        <div class="member-brand-strip-copy">
+          <p class="member-brand-strip-name">Christ Adenta Presby</p>
+          <p class="member-brand-strip-role">Presbyterian Church of Ghana</p>
+        </div>
+      </section>
+
       <section class="request-topbar">
         <div>
           <p class="eyebrow">Request Tracking</p>
@@ -44,7 +52,7 @@
         <form id="trackingForm" class="tracking-form">
           <label>
             <span>Tracking code</span>
-            <input id="trackingCodeInput" type="text" placeholder="BUS-1234ABCD" autocomplete="off" />
+            <input id="trackingCodeInput" class="tracking-code-input" type="text" placeholder="BUS-1234ABCD" autocomplete="off" />
           </label>
           <button class="primary-button" type="submit">Check status</button>
         </form>
@@ -55,7 +63,7 @@
           <div class="tracking-head">
             <div>
               <p class="eyebrow">Tracking code</p>
-              <h2 id="trackingCodeTitle"></h2>
+              <h2 id="trackingCodeTitle" class="tracking-code-display"></h2>
             </div>
             <span id="trackingStatusBadge" class="status-badge"></span>
           </div>

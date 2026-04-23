@@ -57,6 +57,7 @@ const staticRoutes = new Map([
   ["/track.js", "track.js"],
   ["/admin.js", "admin.js"],
   ["/pcg-logo.png", "pcg-logo.png"],
+  ["/pcglogo.png", "pcglogo.png"],
   ["/bus-hero.svg", "bus-hero.svg"],
   ["/styles.css", "styles.css"],
   ["/favicon.ico", "favicon.svg"],

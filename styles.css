@@ -114,6 +114,56 @@ textarea {
   color: var(--navy);
 }
 
+.member-brand-strip {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 0.8rem;
+  margin-bottom: 0.95rem;
+  padding: 0.75rem 0.95rem;
+  border: 1px solid rgba(18, 59, 116, 0.08);
+  border-radius: var(--surface-radius);
+  background: #ffffff;
+}
+
+.member-brand-strip-home {
+  width: min(1100px, calc(100% - 1.5rem));
+  margin: 1rem auto 0;
+}
+
+.member-brand-strip-logo {
+  width: 44px;
+  height: auto;
+  display: block;
+}
+
+.member-brand-strip-copy {
+  display: grid;
+  align-content: center;
+}
+
+.member-brand-strip-name,
+.member-brand-strip-role {
+  margin: 0;
+}
+
+.member-brand-strip-name {
+  color: var(--navy);
+  font-family: var(--font-display);
+  font-size: clamp(1.15rem, 2vw, 1.45rem);
+  font-weight: 600;
+  line-height: 1.02;
+}
+
+.member-brand-strip-role {
+  margin-top: 0.08rem;
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
 .brand-lockup {
   display: inline-flex;
   align-items: center;
@@ -413,8 +463,16 @@ textarea {
 .home-brand {
   display: flex;
   align-items: center;
+  gap: 0.8rem;
   padding-bottom: 0.85rem;
   border-bottom: 1px solid rgba(200, 166, 79, 0.28);
+}
+
+.home-brand-logo {
+  width: 46px;
+  height: auto;
+  display: block;
+  flex: 0 0 auto;
 }
 
 .home-kicker,
@@ -760,6 +818,55 @@ textarea {
   margin-bottom: 0.7rem;
 }
 
+.availability-brand {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 0.95rem;
+  padding: 0.8rem 1rem;
+  border: 1px solid rgba(18, 59, 116, 0.08);
+  border-radius: var(--surface-radius);
+  background: #ffffff;
+}
+
+.availability-brand-logo {
+  width: 58px;
+  height: auto;
+  display: block;
+}
+
+.availability-brand-copy {
+  min-height: 58px;
+  display: grid;
+  align-content: center;
+  padding: 0 0.25rem;
+  border-radius: 6px;
+  background: linear-gradient(90deg, rgba(246, 239, 218, 0.28) 0%, rgba(255, 255, 255, 0.98) 100%);
+}
+
+.availability-brand-name,
+.availability-brand-role {
+  margin: 0;
+}
+
+.availability-brand-name {
+  color: var(--navy);
+  font-family: var(--font-display);
+  font-size: clamp(1.2rem, 2.2vw, 1.65rem);
+  font-weight: 600;
+  line-height: 1.05;
+}
+
+.availability-brand-role {
+  margin-top: 0.18rem;
+  color: var(--red);
+  font-size: 0.92rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
 .availability-warning {
   display: flex;
   align-items: center;
@@ -898,6 +1005,25 @@ textarea {
   margin: 0.1rem 0 0;
   font-size: clamp(1.5rem, 3vw, 2.1rem);
   letter-spacing: 0;
+}
+
+.tracking-code-input,
+.tracking-code-display {
+  font-family: "SFMono-Regular", "Cascadia Code", "Consolas", "Liberation Mono", "Menlo", monospace;
+  letter-spacing: 0.06em;
+}
+
+.tracking-code-display {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  margin-top: 0.25rem;
+  padding: 0.5rem 0.8rem;
+  border-radius: 8px;
+  background: #eef3f9;
+  color: var(--navy);
+  font-size: clamp(1.05rem, 2vw, 1.3rem);
+  line-height: 1;
 }
 
 .tracking-summary {
@@ -1618,6 +1744,38 @@ button:disabled {
     grid-template-columns: 1fr;
   }
 
+  .availability-brand {
+    grid-template-columns: 1fr;
+    justify-items: start;
+    gap: 0.7rem;
+    padding: 0.85rem;
+  }
+
+  .availability-brand-copy {
+    width: 100%;
+    min-height: 0;
+    padding: 0.4rem 0.1rem 0;
+    background: transparent;
+  }
+
+  .member-brand-strip {
+    grid-template-columns: 1fr;
+    justify-items: start;
+    gap: 0.65rem;
+    padding: 0.8rem 0.85rem;
+  }
+
+  .member-brand-strip-copy {
+    width: 100%;
+    min-height: 0;
+    padding: 0.1rem 0;
+    background: transparent;
+  }
+
+  .member-brand-strip-logo {
+    width: 40px;
+  }
+
   .tracking-form,
   .tracking-summary {
     grid-template-columns: 1fr;
@@ -1702,6 +1860,14 @@ button:disabled {
     bottom: 1rem;
     width: calc(100% - 1rem);
     padding: 0.85rem;
+  }
+
+  .home-brand {
+    gap: 0.65rem;
+  }
+
+  .home-brand-logo {
+    width: 40px;
   }
 
   .home-card-copy h1 {
