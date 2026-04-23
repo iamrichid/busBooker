@@ -238,11 +238,12 @@ function createVersionKey() {
   return `${String(Date.now()).padStart(13, "0")}-${randomUUID()}.json`;
 }
 
-function normalizeNotificationSettings(settings = {}) {
+export function normalizeNotificationSettings(settings) {
+  const safeSettings = settings && typeof settings === "object" ? settings : {};
   const fallback = getDefaultNotificationSettings();
   return {
-    adminPhones: normalizePhoneList(settings.adminPhones, fallback.adminPhones),
-    financePhones: normalizePhoneList(settings.financePhones, fallback.financePhones),
+    adminPhones: normalizePhoneList(safeSettings.adminPhones, fallback.adminPhones),
+    financePhones: normalizePhoneList(safeSettings.financePhones, fallback.financePhones),
   };
 }
 
