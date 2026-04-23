@@ -6,6 +6,8 @@ const cSmsEndpoint = "https://app.mycsms.com/api/v3/sms/send";
 export async function notifyBookingSubmitted(booking) {
   const settings = await readNotificationSettings();
   const dateLabel = getDateLabel(booking);
+  const trackingUrl = booking.trackingCode ? buildPublicUrl(`/track?code=${encodeURIComponent(booking.trackingCode)}`) : "";
+  const adminUrl = buildPublicUrl("/admin");
   const requesterMessage = [
     `Hello ${booking.requesterName},`,
     "",
@@ -13,7 +15,7 @@ export async function notifyBookingSubmitted(booking) {
     `Booking type: ${booking.bookingType === "full_day" ? "Full day" : `Half day (${booking.timeSlot})`}`,
     `Event: ${booking.eventName}`,
     booking.trackingCode ? `Tracking code: ${booking.trackingCode}` : null,
-    booking.trackingCode ? `Track request: /track?code=${booking.trackingCode}` : null,
+    trackingUrl ? `Track request: ${trackingUrl}` : null,
     "",
     "We will send you another update after the request is reviewed.",
   ]
@@ -26,6 +28,7 @@ export async function notifyBookingSubmitted(booking) {
     `Event: ${booking.eventName}`,
     `Dates: ${dateLabel}`,
     booking.trackingCode ? `Tracking code: ${booking.trackingCode}` : null,
+    `Review request: ${adminUrl}`,
   ]
     .filter(Boolean)
     .join("\n");
@@ -54,12 +57,14 @@ export async function notifyBookingDecision(booking) {
   const settings = await readNotificationSettings();
   const dateLabel = getDateLabel(booking);
   const decisionText = getDecisionText(booking.status);
+  const trackingUrl = booking.trackingCode ? buildPublicUrl(`/track?code=${encodeURIComponent(booking.trackingCode)}`) : "";
   const requesterMessage = [
     `Hello ${booking.requesterName},`,
     "",
     `Your church bus request for ${dateLabel} has been ${decisionText}.`,
     `Event: ${booking.eventName}`,
     booking.adminNotes ? `Admin note: ${booking.adminNotes}` : null,
+    trackingUrl ? `Track request: ${trackingUrl}` : null,
     "",
     getDecisionInstruction(booking.status),
   ]
@@ -77,12 +82,14 @@ export async function notifyBookingDecision(booking) {
   ];
 
   if (booking.status === "awaiting_payment") {
+    const financeUrl = buildPublicUrl("/finance");
     const financeMessage = [
       "Bus request approved for payment.",
       `Requester: ${booking.requesterName}`,
       `Event: ${booking.eventName}`,
       `Dates: ${dateLabel}`,
       booking.trackingCode ? `Tracking code: ${booking.trackingCode}` : null,
+      `Open payment desk: ${financeUrl}`,
     ]
       .filter(Boolean)
       .join("\n");
@@ -106,12 +113,15 @@ export async function notifyBookingDecision(booking) {
 export async function notifyPaymentConfirmed(booking) {
   const settings = await readNotificationSettings();
   const dateLabel = getDateLabel(booking);
+  const trackingUrl = booking.trackingCode ? buildPublicUrl(`/track?code=${encodeURIComponent(booking.trackingCode)}`) : "";
+  const adminUrl = buildPublicUrl("/admin");
   const requesterMessage = [
     `Hello ${booking.requesterName},`,
     "",
     `Your payment for the church bus request on ${dateLabel} has been confirmed.`,
     `Event: ${booking.eventName}`,
     booking.paymentReference ? `Reference: ${booking.paymentReference}` : null,
+    trackingUrl ? `Track request: ${trackingUrl}` : null,
     "",
     "The transport desk will now complete the final bus release.",
   ]
@@ -124,6 +134,7 @@ export async function notifyPaymentConfirmed(booking) {
     `Event: ${booking.eventName}`,
     `Dates: ${dateLabel}`,
     booking.trackingCode ? `Tracking code: ${booking.trackingCode}` : null,
+    `Release request: ${adminUrl}`,
     "The request is now ready for bus release.",
   ]
     .filter(Boolean)
@@ -171,6 +182,13 @@ function getDecisionInstruction(status) {
   }
 
   return "If you still need the bus, please contact the transport team or submit a new request for another slot.";
+}
+
+function buildPublicUrl(pathname) {
+  const baseUrl = String(process.env.APP_BASE_URL || "").trim().replace(/\/+$/, "");
+  const path = pathname.startsWith("/") ? pathname : `/${pathname}`;
+
+  return baseUrl ? `${baseUrl}${path}` : path;
 }
 
 async function sendNotifications({ booking, eventType, notifications }) {

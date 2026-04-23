@@ -13,7 +13,7 @@ import {
 export async function POST(request) {
   try {
     const body = await parseRequestJson(request);
-    authenticateAdminCredentials(body.accessCode, body.adminName);
+    await authenticateAdminCredentials(body.accessCode, body.adminName);
     const useSecureCookies = shouldUseSecureCookies(request.headers, request.url);
 
     const token = createAdminSession(body.adminName);

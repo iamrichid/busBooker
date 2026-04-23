@@ -13,7 +13,7 @@ import {
 export async function POST(request) {
   try {
     const body = await parseRequestJson(request);
-    authenticateFinanceCredentials(body.accessCode, body.financeName);
+    await authenticateFinanceCredentials(body.accessCode, body.financeName);
     const useSecureCookies = shouldUseSecureCookies(request.headers, request.url);
     const token = createFinanceSession(body.financeName);
 

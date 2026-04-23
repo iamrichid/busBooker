@@ -1,4 +1,8 @@
 .env
 .vercel
+.next
+node_modules
+data/access-settings.json
 data/bookings.json
+data/notification-settings.json
 data/notifications.log

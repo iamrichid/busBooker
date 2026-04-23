@@ -7,9 +7,11 @@ const dataDir = path.join(process.cwd(), "data");
 const bookingsFile = path.join(dataDir, "bookings.json");
 const notificationsFile = path.join(dataDir, "notifications.log");
 const notificationSettingsFile = path.join(dataDir, "notification-settings.json");
+const accessSettingsFile = path.join(dataDir, "access-settings.json");
 const bookingBlobPrefix = "bus-booker/bookings/";
 const notificationBlobPrefix = "bus-booker/notifications/";
 const notificationSettingsBlobPath = "bus-booker/settings/notification-settings.json";
+const accessSettingsBlobPath = "bus-booker/settings/access-settings.json";
 
 export async function ensureDataFiles() {
   if (usesBlobStorage()) {
@@ -35,6 +37,16 @@ export async function ensureDataFiles() {
   } catch (error) {
     if (error.code === "ENOENT") {
       await writeFile(notificationSettingsFile, `${JSON.stringify(getDefaultNotificationSettings(), null, 2)}\n`, "utf8");
+    } else {
+      throw error;
+    }
+  }
+
+  try {
+    await readFile(accessSettingsFile, "utf8");
+  } catch (error) {
+    if (error.code === "ENOENT") {
+      await writeFile(accessSettingsFile, `${JSON.stringify(getDefaultAccessSettings(), null, 2)}\n`, "utf8");
       return;
     }
 
@@ -114,6 +126,41 @@ export async function saveNotificationSettings(settings) {
   assertWritableLocalStorage();
   await ensureDataFiles();
   await writeFile(notificationSettingsFile, `${JSON.stringify(normalized, null, 2)}\n`, "utf8");
+  return normalized;
+}
+
+export async function readAccessSettings() {
+  if (usesBlobStorage()) {
+    const blobSettings = await readBlobJson(accessSettingsBlobPath);
+    return normalizeAccessSettings(blobSettings);
+  }
+
+  assertWritableLocalStorage();
+  await ensureDataFiles();
+  const raw = await readFile(accessSettingsFile, "utf8");
+  return normalizeAccessSettings(JSON.parse(raw));
+}
+
+export async function saveAccessSettings(settings) {
+  const normalized = normalizeAccessSettings(settings);
+
+  if (usesBlobStorage()) {
+    const { put } = await loadBlobSdk();
+    await put(
+      accessSettingsBlobPath,
+      `${JSON.stringify(normalized, null, 2)}\n`,
+      {
+        access: "private",
+        addRandomSuffix: false,
+        contentType: "application/json",
+      },
+    );
+    return normalized;
+  }
+
+  assertWritableLocalStorage();
+  await ensureDataFiles();
+  await writeFile(accessSettingsFile, `${JSON.stringify(normalized, null, 2)}\n`, "utf8");
   return normalized;
 }
 
@@ -247,6 +294,15 @@ export function normalizeNotificationSettings(settings) {
   };
 }
 
+export function normalizeAccessSettings(settings) {
+  const safeSettings = settings && typeof settings === "object" ? settings : {};
+  const fallback = getDefaultAccessSettings();
+  return {
+    admin: normalizeDeskAccessSettings(safeSettings.admin, fallback.admin),
+    finance: normalizeDeskAccessSettings(safeSettings.finance, fallback.finance),
+  };
+}
+
 function normalizePhoneList(value, fallback = []) {
   if (!Array.isArray(value)) {
     return [...fallback];
@@ -263,6 +319,29 @@ function getDefaultNotificationSettings() {
   return {
     adminPhones: readEnvPhoneList(process.env.ADMIN_NOTIFICATION_PHONES),
     financePhones: readEnvPhoneList(process.env.FINANCE_NOTIFICATION_PHONES),
+  };
+}
+
+function normalizeDeskAccessSettings(settings, fallback) {
+  const safeSettings = settings && typeof settings === "object" ? settings : {};
+  return {
+    accessCode: String(safeSettings.accessCode || fallback.accessCode || "").trim(),
+    name: String(safeSettings.name || fallback.name || "").trim(),
+  };
+}
+
+function getDefaultAccessSettings() {
+  return {
+    admin: {
+      accessCode: String(process.env.ADMIN_ACCESS_CODE || "church-bus-2026").trim(),
+      name: String(process.env.ADMIN_LOGIN_NAME || process.env.ADMIN_NAME || "Transport secretary").trim(),
+    },
+    finance: {
+      accessCode: String(
+        process.env.FINANCE_ACCESS_CODE || process.env.ADMIN_ACCESS_CODE || "church-bus-2026",
+      ).trim(),
+      name: String(process.env.FINANCE_LOGIN_NAME || process.env.FINANCE_NAME || "Finance officer").trim(),
+    },
   };
 }
 

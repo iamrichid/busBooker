@@ -13,7 +13,14 @@ import {
 } from "./notifications.js";
 import { findVehicleById, getAvailableVehicles, getFleet, getVehicleDisplay } from "./fleet.js";
 import { HttpError } from "./http.js";
-import { readBookings, readNotificationSettings, saveBooking, saveNotificationSettings } from "./storage.js";
+import {
+  readAccessSettings,
+  readBookings,
+  readNotificationSettings,
+  saveAccessSettings,
+  saveBooking,
+  saveNotificationSettings,
+} from "./storage.js";
 
 export async function submitBookingRequest(input) {
   const validation = validateBookingRequest(input);
@@ -96,6 +103,34 @@ export async function getNotificationSettingsForAdmin() {
   };
 }
 
+export async function getAccessSettingsForAdmin() {
+  const settings = await readAccessSettings();
+
+  return {
+    body: {
+      settings: settings.admin,
+    },
+    statusCode: 200,
+  };
+}
+
+export async function updateAccessSettingsForAdmin(input) {
+  const settings = await readAccessSettings();
+  const nextAdminSettings = validateAccessSettingsInput(input, "admin");
+  const nextSettings = await saveAccessSettings({
+    ...settings,
+    admin: nextAdminSettings,
+  });
+
+  return {
+    body: {
+      message: "Admin credentials updated successfully.",
+      settings: nextSettings.admin,
+    },
+    statusCode: 200,
+  };
+}
+
 export async function updateNotificationSettingsForAdmin(input) {
   const adminPhones = validateNotificationPhoneList(input.adminPhones, "adminPhones");
   const financePhones = validateNotificationPhoneList(input.financePhones, "financePhones");
@@ -121,6 +156,34 @@ export async function listBookingsForFinance() {
       bookings: [...bookings].sort((left, right) =>
         right.submittedAt.localeCompare(left.submittedAt),
       ),
+    },
+    statusCode: 200,
+  };
+}
+
+export async function getAccessSettingsForFinance() {
+  const settings = await readAccessSettings();
+
+  return {
+    body: {
+      settings: settings.finance,
+    },
+    statusCode: 200,
+  };
+}
+
+export async function updateAccessSettingsForFinance(input) {
+  const settings = await readAccessSettings();
+  const nextFinanceSettings = validateAccessSettingsInput(input, "finance");
+  const nextSettings = await saveAccessSettings({
+    ...settings,
+    finance: nextFinanceSettings,
+  });
+
+  return {
+    body: {
+      message: "Finance credentials updated successfully.",
+      settings: nextSettings.finance,
     },
     statusCode: 200,
   };
@@ -365,6 +428,36 @@ function validateNotificationPhoneList(value, fieldName) {
       fields: {
         [fieldName]: `Invalid Ghana number(s): ${invalid.join(", ")}`,
       },
+    });
+  }
+
+  return normalized;
+}
+
+function validateAccessSettingsInput(input, desk) {
+  const nameField = desk === "admin" ? "adminName" : "financeName";
+  const codeField = "accessCode";
+  const nameLabel = desk === "admin" ? "Admin name" : "Finance officer name";
+  const accessCodeLabel = desk === "admin" ? "Admin access code" : "Finance access code";
+  const normalized = {
+    accessCode: String(input?.accessCode || "").trim(),
+    name: String(input?.name || input?.[nameField] || "").trim(),
+  };
+  const fields = {};
+
+  if (!normalized.name) {
+    fields[nameField] = `${nameLabel} is required.`;
+  }
+
+  if (!normalized.accessCode) {
+    fields[codeField] = `${accessCodeLabel} is required.`;
+  } else if (normalized.accessCode.length < 6) {
+    fields[codeField] = `${accessCodeLabel} must be at least 6 characters.`;
+  }
+
+  if (Object.keys(fields).length > 0) {
+    throw new HttpError(400, `Please provide a valid ${desk} sign-in configuration.`, {
+      fields,
     });
   }
 

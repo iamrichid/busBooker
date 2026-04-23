@@ -1,4 +1,5 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
+import { readAccessSettings } from "./storage.js";
 
 export class HttpError extends Error {
   constructor(statusCode, message, details = {}) {
@@ -46,8 +47,10 @@ export function buildAdminSessionCookie(sessionToken, options = {}) {
   return `${ADMIN_SESSION_COOKIE}=${sessionToken}; ${attributes.join("; ")}`;
 }
 
-export function authenticateAdminCredentials(accessCode, adminName) {
-  const adminAccessCode = process.env.ADMIN_ACCESS_CODE || "church-bus-2026";
+export async function authenticateAdminCredentials(accessCode, adminName) {
+  const accessSettings = await readAccessSettings();
+  const adminAccessCode = accessSettings.admin.accessCode;
+  const expectedName = accessSettings.admin.name;
   const providedCode = String(accessCode || "").trim();
   const providedName = String(adminName || "").trim();
 
@@ -62,13 +65,17 @@ export function authenticateAdminCredentials(accessCode, adminName) {
   if (!providedName) {
     throw new HttpError(400, "Admin name is required.", {
       fields: {
-        adminName: "Please enter the admin name for this session.",
+        adminName: "Please enter the admin name.",
       },
     });
   }
 
   if (!safeEqual(providedCode, adminAccessCode)) {
     throw new HttpError(401, "Invalid admin access code.");
+  }
+
+  if (!safeEqual(providedName, expectedName)) {
+    throw new HttpError(401, "Invalid admin name.");
   }
 }
 
@@ -104,8 +111,10 @@ export function clearFinanceSessionCookie(options = {}) {
   return `${FINANCE_SESSION_COOKIE}=; ${attributes.join("; ")}`;
 }
 
-export function authenticateFinanceCredentials(accessCode, financeName) {
-  const financeAccessCode = process.env.FINANCE_ACCESS_CODE || process.env.ADMIN_ACCESS_CODE || "church-bus-2026";
+export async function authenticateFinanceCredentials(accessCode, financeName) {
+  const accessSettings = await readAccessSettings();
+  const financeAccessCode = accessSettings.finance.accessCode;
+  const expectedName = accessSettings.finance.name;
   const providedCode = String(accessCode || "").trim();
   const providedName = String(financeName || "").trim();
 
@@ -120,13 +129,17 @@ export function authenticateFinanceCredentials(accessCode, financeName) {
   if (!providedName) {
     throw new HttpError(400, "Finance officer name is required.", {
       fields: {
-        financeName: "Please enter your name for this session.",
+        financeName: "Please enter the finance officer name.",
       },
     });
   }
 
   if (!safeEqual(providedCode, financeAccessCode)) {
     throw new HttpError(401, "Invalid finance access code.");
+  }
+
+  if (!safeEqual(providedName, expectedName)) {
+    throw new HttpError(401, "Invalid finance officer name.");
   }
 }
 
