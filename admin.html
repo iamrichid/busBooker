@@ -11,38 +11,24 @@
       href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Source+Sans+3:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-      tailwind.config = {
-        theme: {
-          extend: {
-            fontFamily: {
-              sans: ["Source Sans 3", "Segoe UI", "Helvetica Neue", "Arial", "sans-serif"],
-              display: ["Cormorant Garamond", "Georgia", "serif"],
-            },
-            colors: {
-              navy: "#123b74",
-              presbyRed: "#c7333a",
-              presbyGold: "#c8a64f",
-            },
-          },
-        },
-      };
-    </script>
     <link rel="stylesheet" href="/styles.css" />
   </head>
-  <body class="admin-shell font-sans antialiased text-slate-900 bg-white">
+  <body class="admin-shell">
     <main class="page page-admin">
-      <header class="site-bar">
-        <a class="brand-lockup" href="/">
-          <img src="/pcg-logo.png" alt="Presbyterian Church of Ghana logo" class="brand-logo" />
-          <div class="brand-copy">
-            <p class="brand-name text-navy font-semibold tracking-tight">Presbyterian Church of Ghana</p>
-            <p class="brand-role text-sm text-slate-600">Transport Approval Desk</p>
-          </div>
-        </a>
-        <a class="admin-link" href="/">Member booking</a>
-      </header>
+      <section class="member-brand-strip">
+        <img src="/pcglogo.png" alt="Presbyterian Church of Ghana logo" class="member-brand-strip-logo" />
+        <div class="member-brand-strip-copy">
+          <p class="member-brand-strip-name">__APP_NAME__</p>
+          <p class="member-brand-strip-role">Presbyterian Church of Ghana</p>
+        </div>
+      </section>
+
+      <section class="request-topbar">
+        <div>
+          <p class="eyebrow">Approval Desk</p>
+          <h1 class="font-display">Transport Approval Desk</h1>
+        </div>
+      </section>
 
       <section class="admin-stage admin-stage-auth-only">
         <section id="authPanel" class="auth-panel">
@@ -86,10 +72,10 @@
           </div>
         </div>
 
-        <div class="summary-grid">
-          <article class="summary-card summary-card-primary">
-            <span class="summary-label">Pending review</span>
-            <strong id="summaryPending">0</strong>
+      <div class="summary-grid">
+        <article class="summary-card summary-card-primary">
+          <span class="summary-label">Pending review</span>
+          <strong id="summaryPending">0</strong>
           </article>
           <article class="summary-card">
             <span class="summary-label">Awaiting payment</span>
@@ -104,6 +90,29 @@
             <strong id="summaryDeclined">0</strong>
           </article>
         </div>
+
+        <section class="request-table-panel">
+          <div class="section-title">
+            <h3 class="font-display text-2xl leading-tight text-slate-900">SMS Credits</h3>
+          </div>
+
+          <div class="summary-grid">
+            <article class="summary-card">
+              <span class="summary-label">Credits left</span>
+              <strong id="smsCreditBalance">--</strong>
+            </article>
+            <article class="summary-card">
+              <span class="summary-label">Last SMS cost</span>
+              <strong id="smsCreditCost">--</strong>
+            </article>
+            <article class="summary-card">
+              <span class="summary-label">Last updated</span>
+              <strong id="smsCreditUpdated">--</strong>
+            </article>
+          </div>
+
+          <div id="smsCreditWarning" class="form-message" aria-live="polite" hidden></div>
+        </section>
 
         <section class="request-table-panel">
           <div class="section-title">
@@ -231,6 +240,11 @@
             <div id="requestModalProcessedPanel" class="request-processed-panel" hidden>
               <p class="feature-label">Request stage</p>
               <p id="requestModalProcessedText" class="panel-copy"></p>
+              <div class="decision-actions">
+                <button id="markReturnedButton" type="button" class="primary-button" hidden>
+                  Mark bus returned
+                </button>
+              </div>
             </div>
           </section>
         </div>

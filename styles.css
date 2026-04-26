@@ -873,6 +873,9 @@ textarea {
   display: flex;
   align-items: center;
   gap: 0.65rem;
+  width: 100%;
+  margin-left: auto;
+  margin-right: auto;
   margin-bottom: 0.95rem;
   padding: 0.78rem 0.9rem;
   border-radius: 8px;
@@ -891,7 +894,7 @@ textarea {
 .availability-form-panel {
   display: grid;
   gap: 0.9rem;
-  max-width: 680px;
+  width: 100%;
   margin-left: auto;
   margin-right: auto;
 }
@@ -978,7 +981,7 @@ textarea {
 .tracking-panel {
   display: grid;
   gap: 1rem;
-  max-width: 760px;
+  width: 100%;
   margin-left: auto;
   margin-right: auto;
 }
@@ -1356,7 +1359,7 @@ button:disabled {
 }
 
 .admin-stage-auth-only {
-  grid-template-columns: minmax(320px, 560px);
+  grid-template-columns: minmax(0, 560px);
   justify-content: center;
 }
 
@@ -1858,6 +1861,23 @@ button:disabled {
 }
 
 @media (max-width: 640px) {
+  .page-admin .panel,
+  .page-admin .auth-panel,
+  .page-admin .request-modal-card,
+  .page-admin .request-modal-shell {
+    padding: 0.9rem;
+  }
+
+  .page-admin .request-table thead th,
+  .page-admin .request-table tbody td {
+    padding-left: 0.7rem;
+    padding-right: 0.7rem;
+  }
+
+  .page-admin .summary-card strong {
+    font-size: 1.25rem;
+  }
+
   .home-glass-card {
     bottom: 1rem;
     width: calc(100% - 1rem);

@@ -205,6 +205,8 @@ export function buildBookingRecord(value) {
     paymentNotes: "",
     paymentReference: "",
     paymentStatus: "pending",
+    returnedAt: "",
+    returnedBy: "",
     vehicleRegNo: "",
     status: "pending",
     submittedAt: new Date().toISOString(),

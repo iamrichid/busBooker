@@ -13,7 +13,13 @@ import {
 } from "./notifications.js";
 import { findVehicleById, getAvailableVehicles, getFleet, getVehicleDisplay } from "./fleet.js";
 import { HttpError } from "./http.js";
-import { readBookings, readNotificationSettings, saveBooking, saveNotificationSettings } from "./storage.js";
+import {
+  readBookings,
+  readNotificationSettings,
+  readSmsCreditStatus,
+  saveBooking,
+  saveNotificationSettings,
+} from "./storage.js";
 
 export async function submitBookingRequest(input) {
   const validation = validateBookingRequest(input);
@@ -68,6 +74,7 @@ export async function getBookingTracking(code) {
 export async function listBookingsForAdmin() {
   const bookings = await readBookings();
   const fleet = getFleet();
+  const smsCredits = await readSmsCreditStatus();
   const decoratedBookings = bookings.map((booking) => ({
     ...booking,
     availableVehicles:
@@ -82,6 +89,7 @@ export async function listBookingsForAdmin() {
         right.submittedAt.localeCompare(left.submittedAt),
       ),
       fleet,
+      smsCredits,
     },
     statusCode: 200,
   };
@@ -242,6 +250,49 @@ export async function processAdminDecision(id, input) {
       booking: updated,
       message: getDecisionMessage(updated.status),
       notifications: notificationSummary,
+    },
+    statusCode: 200,
+  };
+}
+
+export async function markBookingReturned(id, input) {
+  if (!id) {
+    throw new HttpError(400, "Booking id is required.");
+  }
+
+  const adminName = String(input.adminName || "").trim();
+
+  if (!adminName) {
+    throw new HttpError(400, "Admin name is required.");
+  }
+
+  const bookings = await readBookings();
+  const current = bookings.find((booking) => booking.id === id);
+
+  if (!current) {
+    throw new HttpError(404, "Booking not found.");
+  }
+
+  if (current.status !== "approved") {
+    throw new HttpError(409, "Only released bookings can be marked as returned.");
+  }
+
+  if (current.returnedAt) {
+    throw new HttpError(409, "This bus has already been marked as returned.");
+  }
+
+  const updated = {
+    ...current,
+    returnedAt: new Date().toISOString(),
+    returnedBy: adminName,
+  };
+
+  await saveBooking(updated);
+
+  return {
+    body: {
+      booking: updated,
+      message: "Bus marked as returned and available again.",
     },
     statusCode: 200,
   };
@@ -420,6 +471,7 @@ function toTrackingView(booking) {
     paymentStatus: booking.paymentStatus || "pending",
     processedAt: booking.processedAt || "",
     requesterName: booking.requesterName,
+    returnedAt: booking.returnedAt || "",
     status: booking.status || "pending",
     submittedAt: booking.submittedAt,
     timeSlot: booking.timeSlot,

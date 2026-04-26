@@ -1,4 +1,4 @@
-import { appendNotificationLog, readNotificationSettings } from "./storage.js";
+import { appendNotificationLog, readNotificationSettings, saveSmsCreditStatus } from "./storage.js";
 
 const resendEndpoint = "https://api.resend.com/emails";
 const cSmsEndpoint = "https://app.mycsms.com/api/v3/sms/send";
@@ -6,26 +6,19 @@ const cSmsEndpoint = "https://app.mycsms.com/api/v3/sms/send";
 export async function notifyBookingSubmitted(booking) {
   const settings = await readNotificationSettings();
   const dateLabel = getDateLabel(booking);
+  const trackingUrl = booking.trackingCode ? buildPublicUrl(`/track?code=${encodeURIComponent(booking.trackingCode)}`) : "";
+  const adminUrl = buildPublicUrl(`/admin?booking=${encodeURIComponent(booking.id)}`);
   const requesterMessage = [
-    `Hello ${booking.requesterName},`,
-    "",
-    `Your bus request for ${dateLabel} has been submitted successfully and is now waiting for approval.`,
-    `Booking type: ${booking.bookingType === "full_day" ? "Full day" : `Half day (${booking.timeSlot})`}`,
+    `Bus request received for ${dateLabel}.`,
     `Event: ${booking.eventName}`,
-    booking.trackingCode ? `Tracking code: ${booking.trackingCode}` : null,
-    booking.trackingCode ? `Track request: /track?code=${booking.trackingCode}` : null,
-    "",
-    "We will send you another update after the request is reviewed.",
-  ]
-    .filter(Boolean)
-    .join("\n");
+    trackingUrl ? `Track: ${trackingUrl}` : null,
+  ].filter(Boolean).join("\n");
 
   const adminMessage = [
-    "New bus request received.",
-    `Requester: ${booking.requesterName}`,
-    `Event: ${booking.eventName}`,
-    `Dates: ${dateLabel}`,
-    booking.trackingCode ? `Tracking code: ${booking.trackingCode}` : null,
+    "New bus request.",
+    `${booking.requesterName} - ${booking.eventName}`,
+    dateLabel,
+    `Open: ${adminUrl}`,
   ]
     .filter(Boolean)
     .join("\n");
@@ -54,17 +47,13 @@ export async function notifyBookingDecision(booking) {
   const settings = await readNotificationSettings();
   const dateLabel = getDateLabel(booking);
   const decisionText = getDecisionText(booking.status);
+  const trackingUrl = booking.trackingCode ? buildPublicUrl(`/track?code=${encodeURIComponent(booking.trackingCode)}`) : "";
+  const financeUrl = buildPublicUrl(`/finance?booking=${encodeURIComponent(booking.id)}`);
   const requesterMessage = [
-    `Hello ${booking.requesterName},`,
-    "",
-    `Your church bus request for ${dateLabel} has been ${decisionText}.`,
+    `Bus request ${decisionText} for ${dateLabel}.`,
     `Event: ${booking.eventName}`,
-    booking.adminNotes ? `Admin note: ${booking.adminNotes}` : null,
-    "",
-    getDecisionInstruction(booking.status),
-  ]
-    .filter(Boolean)
-    .join("\n");
+    trackingUrl ? `Track: ${trackingUrl}` : null,
+  ].filter(Boolean).join("\n");
 
   const notifications = [
     {
@@ -78,11 +67,10 @@ export async function notifyBookingDecision(booking) {
 
   if (booking.status === "awaiting_payment") {
     const financeMessage = [
-      "Bus request approved for payment.",
-      `Requester: ${booking.requesterName}`,
-      `Event: ${booking.eventName}`,
-      `Dates: ${dateLabel}`,
-      booking.trackingCode ? `Tracking code: ${booking.trackingCode}` : null,
+      "Bus request awaiting payment.",
+      `${booking.requesterName} - ${booking.eventName}`,
+      dateLabel,
+      `Open: ${financeUrl}`,
     ]
       .filter(Boolean)
       .join("\n");
@@ -96,6 +84,24 @@ export async function notifyBookingDecision(booking) {
     );
   }
 
+  if (booking.status === "approved" && booking.driverPhone) {
+    const driverMessage = [
+      `Bus assigned for ${dateLabel}.`,
+      `Event: ${booking.eventName}`,
+      `Requester: ${booking.requesterName}`,
+      booking.pickupLocation ? `Pickup: ${booking.pickupLocation}` : null,
+      booking.assignedVehicleLabel ? `Bus: ${booking.assignedVehicleLabel}` : null,
+    ]
+      .filter(Boolean)
+      .join("\n");
+
+    notifications.push({
+      phone: booking.driverPhone,
+      recipientRole: "driver",
+      message: driverMessage,
+    });
+  }
+
   return sendNotifications({
     booking,
     eventType: "decision",
@@ -106,25 +112,19 @@ export async function notifyBookingDecision(booking) {
 export async function notifyPaymentConfirmed(booking) {
   const settings = await readNotificationSettings();
   const dateLabel = getDateLabel(booking);
+  const trackingUrl = booking.trackingCode ? buildPublicUrl(`/track?code=${encodeURIComponent(booking.trackingCode)}`) : "";
+  const adminUrl = buildPublicUrl(`/admin?booking=${encodeURIComponent(booking.id)}`);
   const requesterMessage = [
-    `Hello ${booking.requesterName},`,
-    "",
-    `Your payment for the church bus request on ${dateLabel} has been confirmed.`,
+    `Payment confirmed for ${dateLabel}.`,
     `Event: ${booking.eventName}`,
-    booking.paymentReference ? `Reference: ${booking.paymentReference}` : null,
-    "",
-    "The transport desk will now complete the final bus release.",
-  ]
-    .filter(Boolean)
-    .join("\n");
+    trackingUrl ? `Track: ${trackingUrl}` : null,
+  ].filter(Boolean).join("\n");
 
   const adminMessage = [
-    "Payment has been confirmed for a bus request.",
-    `Requester: ${booking.requesterName}`,
-    `Event: ${booking.eventName}`,
-    `Dates: ${dateLabel}`,
-    booking.trackingCode ? `Tracking code: ${booking.trackingCode}` : null,
-    "The request is now ready for bus release.",
+    "Payment confirmed.",
+    `${booking.requesterName} - ${booking.eventName}`,
+    dateLabel,
+    `Open: ${adminUrl}`,
   ]
     .filter(Boolean)
     .join("\n");
@@ -171,6 +171,13 @@ function getDecisionInstruction(status) {
   }
 
   return "If you still need the bus, please contact the transport team or submit a new request for another slot.";
+}
+
+function buildPublicUrl(path) {
+  const baseUrl = String(process.env.APP_BASE_URL || "").trim().replace(/\/+$/, "");
+  const safePath = path.startsWith("/") ? path : `/${path}`;
+
+  return baseUrl ? `${baseUrl}${safePath}` : safePath;
 }
 
 async function sendNotifications({ booking, eventType, notifications }) {
@@ -386,9 +393,26 @@ async function sendCsmsSms({ apiKey, message, phone, recipientRole, senderId }) 
     }
 
     const result = payload?.data?.results?.[0];
+    const costInfo = payload?.data?.cost_info;
+
+    if (costInfo) {
+      await saveSmsCreditStatus({
+        balanceAfter: costInfo.balance_after,
+        balanceBefore: costInfo.balance_before,
+        lastUpdatedAt: new Date().toISOString(),
+        lowCredit: Number(costInfo.balance_after) < 100,
+        lowCreditThreshold: 100,
+        perMessage: costInfo.per_message,
+        provider: "csms",
+        recipientCount: costInfo.recipient_count,
+        segmentsPerMessage: costInfo.segments_per_message,
+        totalCost: costInfo.total_cost,
+      });
+    }
 
     return {
       channel: "sms",
+      costInfo: costInfo || null,
       messageId: result?.message_id || null,
       provider: "csms",
       recipientRole: recipientRole || "unknown",

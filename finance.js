@@ -34,6 +34,7 @@ const state = {
   authenticated: false,
   bookings: [],
   financeName: localStorage.getItem("bus-booker-finance-name") || "",
+  pendingBookingId: readRequestedBookingId(),
 };
 
 financeNameInput.value = state.financeName;
@@ -183,6 +184,15 @@ function renderBookings(bookings) {
     row.append(cell);
     financeTableBody.append(row);
   }
+
+  if (state.pendingBookingId) {
+    const requestedBooking = bookings.find((booking) => booking.id === state.pendingBookingId);
+    if (requestedBooking) {
+      const bookingId = state.pendingBookingId;
+      state.pendingBookingId = null;
+      openPaymentModal(bookingId, { focusReference: true });
+    }
+  }
 }
 
 function buildRow(booking) {
@@ -297,6 +307,14 @@ function closePaymentModal() {
   }
 
   document.body.classList.remove("dialog-open");
+}
+
+function readRequestedBookingId() {
+  try {
+    return new URLSearchParams(window.location.search).get("booking") || null;
+  } catch {
+    return null;
+  }
 }
 
 async function submitPaymentConfirmation() {

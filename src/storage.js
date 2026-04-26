@@ -7,9 +7,11 @@ const dataDir = path.join(process.cwd(), "data");
 const bookingsFile = path.join(dataDir, "bookings.json");
 const notificationsFile = path.join(dataDir, "notifications.log");
 const notificationSettingsFile = path.join(dataDir, "notification-settings.json");
+const smsCreditStatusFile = path.join(dataDir, "sms-credit-status.json");
 const bookingBlobPrefix = "bus-booker/bookings/";
 const notificationBlobPrefix = "bus-booker/notifications/";
 const notificationSettingsBlobPath = "bus-booker/settings/notification-settings.json";
+const smsCreditStatusBlobPath = "bus-booker/settings/sms-credit-status.json";
 
 export async function ensureDataFiles() {
   if (usesBlobStorage()) {
@@ -35,6 +37,17 @@ export async function ensureDataFiles() {
   } catch (error) {
     if (error.code === "ENOENT") {
       await writeFile(notificationSettingsFile, `${JSON.stringify(getDefaultNotificationSettings(), null, 2)}\n`, "utf8");
+      return;
+    }
+
+    throw error;
+  }
+
+  try {
+    await readFile(smsCreditStatusFile, "utf8");
+  } catch (error) {
+    if (error.code === "ENOENT") {
+      await writeFile(smsCreditStatusFile, `${JSON.stringify(getDefaultSmsCreditStatus(), null, 2)}\n`, "utf8");
       return;
     }
 
@@ -114,6 +127,41 @@ export async function saveNotificationSettings(settings) {
   assertWritableLocalStorage();
   await ensureDataFiles();
   await writeFile(notificationSettingsFile, `${JSON.stringify(normalized, null, 2)}\n`, "utf8");
+  return normalized;
+}
+
+export async function readSmsCreditStatus() {
+  if (usesBlobStorage()) {
+    const blobStatus = await readBlobJson(smsCreditStatusBlobPath);
+    return normalizeSmsCreditStatus(blobStatus);
+  }
+
+  assertWritableLocalStorage();
+  await ensureDataFiles();
+  const raw = await readFile(smsCreditStatusFile, "utf8");
+  return normalizeSmsCreditStatus(JSON.parse(raw));
+}
+
+export async function saveSmsCreditStatus(status) {
+  const normalized = normalizeSmsCreditStatus(status);
+
+  if (usesBlobStorage()) {
+    const { put } = await loadBlobSdk();
+    await put(
+      smsCreditStatusBlobPath,
+      `${JSON.stringify(normalized, null, 2)}\n`,
+      {
+        access: "private",
+        addRandomSuffix: false,
+        contentType: "application/json",
+      },
+    );
+    return normalized;
+  }
+
+  assertWritableLocalStorage();
+  await ensureDataFiles();
+  await writeFile(smsCreditStatusFile, `${JSON.stringify(normalized, null, 2)}\n`, "utf8");
   return normalized;
 }
 
@@ -264,6 +312,53 @@ function getDefaultNotificationSettings() {
     adminPhones: readEnvPhoneList(process.env.ADMIN_NOTIFICATION_PHONES),
     financePhones: readEnvPhoneList(process.env.FINANCE_NOTIFICATION_PHONES),
   };
+}
+
+function getDefaultSmsCreditStatus() {
+  return {
+    balanceAfter: null,
+    balanceBefore: null,
+    lastUpdatedAt: "",
+    lowCredit: false,
+    lowCreditThreshold: 100,
+    perMessage: null,
+    provider: "csms",
+    recipientCount: null,
+    segmentsPerMessage: null,
+    totalCost: null,
+  };
+}
+
+function normalizeSmsCreditStatus(status) {
+  const safeStatus = status && typeof status === "object" ? status : {};
+  const fallback = getDefaultSmsCreditStatus();
+
+  return {
+    balanceAfter: normalizeNullableNumber(safeStatus.balanceAfter, fallback.balanceAfter),
+    balanceBefore: normalizeNullableNumber(safeStatus.balanceBefore, fallback.balanceBefore),
+    lastUpdatedAt: String(safeStatus.lastUpdatedAt || fallback.lastUpdatedAt || ""),
+    lowCredit:
+      typeof safeStatus.lowCredit === "boolean"
+        ? safeStatus.lowCredit
+        : normalizeNullableNumber(safeStatus.balanceAfter, fallback.balanceAfter) !== null &&
+            normalizeNullableNumber(safeStatus.balanceAfter, fallback.balanceAfter) < getLowCreditThreshold(safeStatus),
+    lowCreditThreshold: getLowCreditThreshold(safeStatus),
+    perMessage: normalizeNullableNumber(safeStatus.perMessage, fallback.perMessage),
+    provider: String(safeStatus.provider || fallback.provider),
+    recipientCount: normalizeNullableNumber(safeStatus.recipientCount, fallback.recipientCount),
+    segmentsPerMessage: normalizeNullableNumber(safeStatus.segmentsPerMessage, fallback.segmentsPerMessage),
+    totalCost: normalizeNullableNumber(safeStatus.totalCost, fallback.totalCost),
+  };
+}
+
+function getLowCreditThreshold(status) {
+  const value = Number.parseInt(String(status?.lowCreditThreshold ?? 100), 10);
+  return Number.isFinite(value) ? value : 100;
+}
+
+function normalizeNullableNumber(value, fallback = null) {
+  const parsed = Number.parseFloat(String(value ?? ""));
+  return Number.isFinite(parsed) ? parsed : fallback;
 }
 
 function readEnvPhoneList(value) {

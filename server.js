@@ -25,6 +25,7 @@ import {
   getNotificationSettingsForAdmin,
   getBookingTracking,
   confirmBookingPayment,
+  markBookingReturned,
   processAdminDecision,
   submitBookingRequest,
   updateNotificationSettingsForAdmin,
@@ -37,6 +38,7 @@ await ensureDataFiles();
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const port = Number.parseInt(process.env.PORT || "3000", 10);
+const appName = String(process.env.APP_NAME || "Christ Congregation Adenta").trim();
 
 const staticRoutes = new Map([
   ["/", "index.html"],
@@ -138,6 +140,20 @@ const server = createServer(async (request, response) => {
       const session = assertAdminAccess(request.headers);
       const body = await readJsonBody(request);
       const result = await processAdminDecision(url.searchParams.get("id"), {
+        ...body,
+        adminName: session.adminName,
+      });
+      return sendJson(response, result.statusCode, result.body);
+    }
+
+    if (pathname === "/api/admin/bookings/return") {
+      if (request.method !== "POST") {
+        throw new HttpError(405, "Method not allowed.");
+      }
+
+      const session = assertAdminAccess(request.headers);
+      const body = await readJsonBody(request);
+      const result = await markBookingReturned(url.searchParams.get("id"), {
         ...body,
         adminName: session.adminName,
       });
@@ -308,8 +324,19 @@ server.listen(port, () => {
 
 async function serveFile(response, filePath) {
   try {
-    const file = await readFile(filePath);
     const extension = path.extname(filePath);
+
+    if (extension === ".html") {
+      const html = await readFile(filePath, "utf8");
+      const renderedHtml = html.replaceAll("__APP_NAME__", escapeHtml(appName));
+      response.writeHead(200, {
+        "Content-Type": mimeTypes[extension] || "application/octet-stream",
+      });
+      response.end(renderedHtml);
+      return;
+    }
+
+    const file = await readFile(filePath);
     response.writeHead(200, {
       "Content-Type": mimeTypes[extension] || "application/octet-stream",
     });
@@ -321,6 +348,15 @@ async function serveFile(response, filePath) {
 
     throw error;
   }
+}
+
+function escapeHtml(value) {
+  return String(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
 }
 
 async function readJsonBody(request) {

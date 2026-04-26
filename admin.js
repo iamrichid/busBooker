@@ -25,6 +25,7 @@ const requestModalDetails = document.querySelector("#requestModalDetails");
 const requestModalDecisionPanel = document.querySelector("#requestModalDecisionPanel");
 const requestModalProcessedPanel = document.querySelector("#requestModalProcessedPanel");
 const requestModalProcessedText = document.querySelector("#requestModalProcessedText");
+const markReturnedButton = document.querySelector("#markReturnedButton");
 const requestModalVehicleSelect = document.querySelector("#requestModalVehicleSelect");
 const requestModalVehicleError = document.querySelector("#requestModalVehicleError");
 const requestModalDriverName = document.querySelector("#requestModalDriverName");
@@ -44,6 +45,10 @@ const summaryNodes = {
   declined: document.querySelector("#summaryDeclined"),
   pending: document.querySelector("#summaryPending"),
 };
+const smsCreditBalance = document.querySelector("#smsCreditBalance");
+const smsCreditCost = document.querySelector("#smsCreditCost");
+const smsCreditUpdated = document.querySelector("#smsCreditUpdated");
+const smsCreditWarning = document.querySelector("#smsCreditWarning");
 
 const state = {
   adminName: localStorage.getItem("bus-booker-admin-name") || "",
@@ -51,10 +56,12 @@ const state = {
   fleet: [],
   bookings: [],
   activeBookingId: null,
+  pendingBookingId: readRequestedBookingId(),
   notificationSettings: {
     adminPhones: [],
     financePhones: [],
   },
+  smsCredits: null,
 };
 
 adminNameInput.value = state.adminName;
@@ -67,6 +74,7 @@ notificationSettingsForm?.addEventListener("submit", handleSaveNotificationSetti
 closeRequestModalButton?.addEventListener("click", closeRequestModal);
 requestModalApproveButton?.addEventListener("click", () => submitModalDecision(getActiveApprovalDecision()));
 requestModalDeclineButton?.addEventListener("click", () => submitModalDecision("declined"));
+markReturnedButton?.addEventListener("click", markBusReturned);
 requestModalDriverPhone?.addEventListener("input", () => {
   requestModalDriverPhone.value = requestModalDriverPhone.value.replace(/\D/g, "").slice(0, 10);
   requestModalDriverPhoneError.textContent = "";
@@ -166,6 +174,7 @@ async function signIn({ restoreSession = false } = {}) {
     state.fleet = result.fleet || [];
     state.bookings = result.bookings || [];
     state.notificationSettings = settingsResult.settings || state.notificationSettings;
+    state.smsCredits = result.smsCredits || null;
 
     localStorage.setItem("bus-booker-admin-name", state.adminName);
 
@@ -174,6 +183,7 @@ async function signIn({ restoreSession = false } = {}) {
     activeAdminName.textContent = state.adminName;
     renderBookings(state.bookings);
     renderNotificationSettings();
+    renderSmsCredits();
     setAdminMessage(`Signed in as ${state.adminName}.`, "success");
   } catch (error) {
     setAdminMessage(error.message || "The server could not be reached.", "error");
@@ -207,7 +217,9 @@ async function loadBookings() {
 
     state.fleet = result.fleet || [];
     state.bookings = result.bookings || [];
+    state.smsCredits = result.smsCredits || state.smsCredits;
     renderBookings(state.bookings);
+    renderSmsCredits();
     setAdminMessage("Requests loaded successfully.", "success");
 
     if (state.activeBookingId) {
@@ -301,6 +313,7 @@ async function logout(options = {}) {
     adminPhones: [],
     financePhones: [],
   };
+  state.smsCredits = null;
 
   adminAccessCodeInput.value = "";
   adminNameInput.value = "";
@@ -316,6 +329,7 @@ async function logout(options = {}) {
   Object.values(summaryNodes).forEach((node) => {
     node.textContent = "0";
   });
+  renderSmsCredits();
   closeRequestModal();
 
   if (!silent) {
@@ -352,6 +366,15 @@ function renderBookings(bookings) {
     row.append(cell);
     requestTableBody.append(row);
   }
+
+  if (state.pendingBookingId) {
+    const requestedBooking = bookings.find((booking) => booking.id === state.pendingBookingId);
+    if (requestedBooking) {
+      const bookingId = state.pendingBookingId;
+      state.pendingBookingId = null;
+      openRequestModal(bookingId, { focusDecision: true });
+    }
+  }
 }
 
 function buildRow(booking) {
@@ -384,7 +407,7 @@ function buildRow(booking) {
   const badge = document.createElement("span");
   badge.className = "status-badge";
   badge.dataset.status = booking.status;
-  badge.textContent = getStatusLabel(booking.status);
+  badge.textContent = getStatusLabel(booking);
   statusCell.append(badge);
 
   vehicleCell.textContent = getStageNote(booking);
@@ -470,7 +493,7 @@ function openRequestModal(bookingId, options = {}) {
     ["Payment status", booking.paymentStatus || "pending"],
     ["Tracking code", booking.trackingCode || "Not available"],
     ["Submitted", formatDateTime(booking.submittedAt)],
-    ["Status", getStatusLabel(booking.status)],
+    ["Status", getStatusLabel(booking)],
   ];
 
   if (booking.assignedVehicleLabel) {
@@ -485,6 +508,11 @@ function openRequestModal(bookingId, options = {}) {
     detailPairs.push(["Processed by", booking.processedBy || "Unknown"]);
     detailPairs.push(["Processed at", formatDateTime(booking.processedAt)]);
     detailPairs.push(["Admin note", booking.adminNotes || "None"]);
+  }
+
+  if (booking.returnedAt) {
+    detailPairs.push(["Returned at", formatDateTime(booking.returnedAt)]);
+    detailPairs.push(["Returned by", booking.returnedBy || "Unknown"]);
   }
 
   detailPairs.forEach(([term, value]) => {
@@ -504,9 +532,9 @@ function openRequestModal(bookingId, options = {}) {
   } else {
     requestModalDecisionPanel.hidden = true;
     requestModalProcessedPanel.hidden = false;
-    requestModalProcessedText.textContent = booking.processedAt
-      ? `Processed by ${booking.processedBy || "Unknown"} on ${formatDateTime(booking.processedAt)}.`
-      : "This request has already been processed.";
+    requestModalProcessedText.textContent = getProcessedPanelText(booking);
+    markReturnedButton.hidden = booking.status !== "approved" || Boolean(booking.returnedAt);
+    markReturnedButton.disabled = false;
   }
 
   if (requestModal?.showModal) {
@@ -532,6 +560,14 @@ function closeRequestModal() {
   }
 
   document.body.classList.remove("dialog-open");
+}
+
+function readRequestedBookingId() {
+  try {
+    return new URLSearchParams(window.location.search).get("booking") || null;
+  } catch {
+    return null;
+  }
 }
 
 async function submitModalDecision(decision) {
@@ -598,6 +634,10 @@ async function submitModalDecision(decision) {
       "success",
     );
 
+    if (decision === "awaiting_payment") {
+      closeRequestModal();
+    }
+
     await loadBookings();
   } catch (error) {
     setAdminMessage(error.message || "The server could not be reached.", "error");
@@ -609,6 +649,45 @@ async function submitModalDecision(decision) {
       requestModalApproveButton.disabled = false;
     }
     requestModalDeclineButton.disabled = false;
+  }
+}
+
+async function markBusReturned() {
+  const booking = state.bookings.find((item) => item.id === state.activeBookingId);
+
+  if (!booking) {
+    return;
+  }
+
+  markReturnedButton.disabled = true;
+
+  try {
+    const response = await fetch(`/api/admin/bookings/return?id=${encodeURIComponent(booking.id)}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({}),
+    });
+    const result = await response.json();
+
+    if (!response.ok) {
+      if (response.status === 401) {
+        await logout({ silent: true });
+        setAdminMessage("Your admin session has expired. Please sign in again.", "error");
+        return;
+      }
+
+      setAdminMessage(result.error || "Could not mark the bus as returned.", "error");
+      return;
+    }
+
+    setAdminMessage(result.message || "Bus marked as returned.", "success");
+    await loadBookings();
+  } catch (error) {
+    setAdminMessage(error.message || "The server could not be reached.", "error");
+  } finally {
+    markReturnedButton.disabled = false;
   }
 }
 
@@ -703,6 +782,28 @@ function renderNotificationSettings() {
   financeContactPhones.value = formatPhoneList(state.notificationSettings.financePhones);
 }
 
+function renderSmsCredits() {
+  const credits = state.smsCredits || {};
+  const balance = typeof credits.balanceAfter === "number" ? String(credits.balanceAfter) : "--";
+  const totalCost = typeof credits.totalCost === "number" ? `${credits.totalCost} credit${credits.totalCost === 1 ? "" : "s"}` : "--";
+  const updatedAt = credits.lastUpdatedAt ? formatDateTime(credits.lastUpdatedAt) : "--";
+
+  smsCreditBalance.textContent = balance;
+  smsCreditCost.textContent = totalCost;
+  smsCreditUpdated.textContent = updatedAt;
+
+  if (credits.lowCredit && typeof credits.balanceAfter === "number") {
+    smsCreditWarning.hidden = false;
+    smsCreditWarning.dataset.tone = "error";
+    smsCreditWarning.textContent = `Low SMS credit warning: ${credits.balanceAfter} credits remaining. Refill before the balance drops below 100.`;
+    return;
+  }
+
+  smsCreditWarning.hidden = true;
+  smsCreditWarning.textContent = "";
+  smsCreditWarning.removeAttribute("data-tone");
+}
+
 function formatPhoneList(list) {
   return Array.isArray(list) ? list.join("\n") : "";
 }
@@ -753,12 +854,25 @@ function configureDecisionPanel(booking) {
   }
 }
 
-function getStatusLabel(status) {
+function getStatusLabel(bookingOrStatus) {
+  const booking =
+    bookingOrStatus && typeof bookingOrStatus === "object"
+      ? bookingOrStatus
+      : { status: bookingOrStatus };
+  const status = booking.status;
+
+  if (status === "awaiting_payment" && booking.paymentStatus === "confirmed") {
+    return "Ready to release";
+  }
+
   if (status === "awaiting_payment") {
     return "Awaiting payment";
   }
 
   if (status === "approved") {
+    if (booking.returnedAt) {
+      return "Available again";
+    }
     return "Released";
   }
 
@@ -779,6 +893,9 @@ function getStageNote(booking) {
   }
 
   if (booking.status === "approved") {
+    if (booking.returnedAt) {
+      return "Bus returned and available";
+    }
     return booking.assignedVehicleLabel || "Bus released";
   }
 
@@ -787,6 +904,18 @@ function getStageNote(booking) {
   }
 
   return "Review needed";
+}
+
+function getProcessedPanelText(booking) {
+  if (booking.returnedAt) {
+    return `Returned by ${booking.returnedBy || "Unknown"} on ${formatDateTime(booking.returnedAt)}.`;
+  }
+
+  if (booking.processedAt) {
+    return `Processed by ${booking.processedBy || "Unknown"} on ${formatDateTime(booking.processedAt)}.`;
+  }
+
+  return "This request has already been processed.";
 }
 
 function escapeHtml(value) {

@@ -2,3 +2,13 @@
 .vercel
 data/bookings.json
 data/notifications.log
+
+node_modules/
+.next/
+data/access-settings.json
+data/sms-credit-status.json
+
+node_modules/
+.next/
+data/access-settings.json
+data/sms-credit-status.json

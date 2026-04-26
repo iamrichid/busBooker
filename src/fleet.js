@@ -51,6 +51,10 @@ export function getAvailableVehicles(bookings, candidate, fleet = getFleet(), op
         return false;
       }
 
+      if (booking.returnedAt) {
+        return false;
+      }
+
       if (!hasScheduleConflict(booking, candidate)) {
         return false;
       }
