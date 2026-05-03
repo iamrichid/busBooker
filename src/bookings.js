@@ -1,14 +1,9 @@
 import { randomUUID } from "node:crypto";
 
-const VALID_BOOKING_TYPES = new Set(["half_day", "full_day"]);
 const VALID_STATUSES = new Set(["pending", "awaiting_payment", "approved", "declined"]);
-const VALID_TIME_SLOTS = new Set(["morning", "afternoon", "full_day"]);
 
 export function validateBookingRequest(input) {
-  const bookingType = normalizeText(input.bookingType);
   const memberStatus = normalizeText(input.memberStatus).toLowerCase();
-  const requestedTimeSlot = normalizeText(input.timeSlot);
-  const timeSlot = bookingType === "full_day" ? "full_day" : requestedTimeSlot;
   const pickupLocation = normalizeText(input.pickupLocation);
   const endLocationMode = normalizeText(input.endLocationMode || "same_as_setoff");
   const endLocationRaw = normalizeText(input.endLocation);
@@ -18,7 +13,6 @@ export function validateBookingRequest(input) {
   const organizationName = normalizeText(input.organizationName || input.ministryName);
   const value = {
     address: normalizeText(input.address),
-    bookingType,
     destination: normalizeText(input.destination),
     endDate: normalizeText(input.toDate || input.travelDate),
     endLocation: endLocationMode === "same_as_setoff" ? pickupLocation : endLocationRaw,
@@ -43,7 +37,6 @@ export function validateBookingRequest(input) {
     startDate: normalizeText(input.fromDate || input.travelDate),
     startTime: normalizeText(input.startTime),
     termsAccepted,
-    timeSlot,
     toDate: normalizeText(input.toDate || input.travelDate),
   };
 
@@ -107,18 +100,6 @@ export function validateBookingRequest(input) {
 
   if (!Number.isInteger(value.passengerCount) || value.passengerCount < 1) {
     errors.passengerCount = "Please enter the number of people.";
-  }
-
-  if (!VALID_BOOKING_TYPES.has(value.bookingType)) {
-    errors.bookingType = "Choose either half day or full day.";
-  }
-
-  if (value.bookingType === "half_day" && !new Set(["morning", "afternoon"]).has(value.timeSlot)) {
-    errors.timeSlot = "Choose morning or afternoon for a half-day booking.";
-  }
-
-  if (value.bookingType === "full_day") {
-    value.timeSlot = "full_day";
   }
 
   if (!value.pickupLocation) {
@@ -234,26 +215,18 @@ export function findConflict(bookings, candidate, options = {}) {
 }
 
 export function hasScheduleConflict(left, right) {
-  const leftRange = getDateRange(left);
-  const rightRange = getDateRange(right);
+  const leftRange = getDateTimeRange(left);
+  const rightRange = getDateTimeRange(right);
 
   if (!leftRange || !rightRange) {
     return false;
   }
 
-  if (leftRange.start > rightRange.end || rightRange.start > leftRange.end) {
+  if (leftRange.start >= rightRange.end || rightRange.start >= leftRange.end) {
     return false;
   }
 
-  if (left.timeSlot === "full_day" || right.timeSlot === "full_day") {
-    return true;
-  }
-
-  return left.timeSlot === right.timeSlot;
-}
-
-export function getBookingTypeLabel(bookingType) {
-  return bookingType === "full_day" ? "Full day" : "Half day";
+  return true;
 }
 
 export function getStatusLabel(status) {
@@ -268,18 +241,6 @@ export function getStatusLabel(status) {
   return `${status.slice(0, 1).toUpperCase()}${status.slice(1)}`;
 }
 
-export function getTimeSlotLabel(timeSlot) {
-  if (!VALID_TIME_SLOTS.has(timeSlot)) {
-    return "Unknown slot";
-  }
-
-  if (timeSlot === "full_day") {
-    return "All day";
-  }
-
-  return timeSlot === "morning" ? "Morning" : "Afternoon";
-}
-
 function isValidDate(value) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
     return false;
@@ -289,19 +250,28 @@ function isValidDate(value) {
   return !Number.isNaN(timestamp);
 }
 
-function getDateRange(booking) {
+function getDateTimeRange(booking) {
   const start = normalizeText(booking.fromDate || booking.travelDate);
   const end = normalizeText(booking.toDate || booking.travelDate);
+  const startTime = normalizeText(booking.startTime);
+  const endTime = normalizeText(booking.endTime);
 
   if (!isValidDate(start) || !isValidDate(end)) {
     return null;
   }
 
-  if (end < start) {
+  if (end < start || !isValidTime(startTime) || !isValidTime(endTime)) {
     return null;
   }
 
-  return { start, end };
+  const startAt = Date.parse(`${start}T${startTime}:00`);
+  const endAt = Date.parse(`${end}T${endTime}:00`);
+
+  if (Number.isNaN(startAt) || Number.isNaN(endAt) || endAt <= startAt) {
+    return null;
+  }
+
+  return { end: endAt, start: startAt };
 }
 
 function isValidEmail(value) {
@@ -310,6 +280,10 @@ function isValidEmail(value) {
 
 function isValidPhone(value) {
   return /^0\d{9}$/.test(value);
+}
+
+function isValidTime(value) {
+  return /^([01]\d|2[0-3]):[0-5]\d$/.test(value);
 }
 
 function normalizeText(value) {

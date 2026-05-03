@@ -33,20 +33,7 @@
   </head>
   <body class="member-shell request-page font-sans antialiased text-slate-900 bg-white">
     <main class="page page-member">
-      <section class="member-brand-strip">
-        <img src="/pcglogo.png" alt="Presbyterian Church of Ghana logo" class="member-brand-strip-logo" />
-        <div class="member-brand-strip-copy">
-          <p class="member-brand-strip-name">Christ Congregation Adentan</p>
-          <p class="member-brand-strip-role">Presbyterian Church of Ghana</p>
-        </div>
-      </section>
-
-      <section class="request-topbar availability-topbar">
-        <div>
-          <p class="eyebrow">Bus Availability</p>
-          <h1 class="font-display">Select Date Range</h1>
-        </div>
-      </section>
+      <pcg-page-header eyebrow="Bus Availability" title="Select Dates and Times" topbar-class="availability-topbar"></pcg-page-header>
 
       <section class="availability-warning" role="note" aria-label="Booking notice">
         <strong>Book at least one week ahead.</strong>
@@ -57,23 +44,51 @@
 
       <section class="panel availability-form-panel">
         <div class="availability-form-copy">
-          <h2>Check dates</h2>
-          <p>Enter your preferred date range before filling the request form.</p>
+          <h2>Check trip window</h2>
+          <p>Enter your preferred start and end date with time before filling the request form.</p>
         </div>
 
         <div class="availability-picker">
           <label>
             <span>From date</span>
-            <input id="availabilityFromDate" type="date" />
+            <div class="custom-date-field">
+              <input
+                id="availabilityFromDateDisplay"
+                class="custom-date-display"
+                type="text"
+                placeholder="Select date"
+                readonly
+              />
+              <input id="availabilityFromDate" class="custom-date-native" type="date" />
+            </div>
+          </label>
+          <label>
+            <span>Start time</span>
+            <input id="availabilityStartTime" type="time" />
           </label>
           <label>
             <span>To date</span>
-            <input id="availabilityToDate" type="date" />
+            <div class="custom-date-field">
+              <input
+                id="availabilityToDateDisplay"
+                class="custom-date-display"
+                type="text"
+                placeholder="Select date"
+                readonly
+              />
+              <input id="availabilityToDate" class="custom-date-native" type="date" />
+            </div>
           </label>
-          <button id="applyDateRangeButton" class="ghost-button" type="button">Apply date range</button>
+          <label>
+            <span>End time</span>
+            <input id="availabilityEndTime" type="time" />
+          </label>
+          <button id="applyDateRangeButton" class="ghost-button availability-apply-button" type="button">
+            Apply trip window
+          </button>
         </div>
 
-        <p id="selectedDateRangeText" class="availability-selection">No date range selected yet.</p>
+        <p id="selectedDateRangeText" class="availability-selection">No trip window selected yet.</p>
         <p id="leadTimeWarning" class="lead-time-warning" hidden>
           This selection is within 7 days, so approval may take longer or the bus may be unavailable.
         </p>
@@ -83,6 +98,9 @@
       </section>
     </main>
 
+    <pcg-site-footer></pcg-site-footer>
+
+    <script type="module" src="/shared-layout.js"></script>
     <script type="module" src="/availability.js"></script>
   </body>
 </html>

@@ -23,12 +23,15 @@ import {
   listBookingsForAdmin,
   listBookingsForFinance,
   getNotificationSettingsForAdmin,
+  getTermsDocument,
+  getTermsDocumentForAdmin,
   getBookingTracking,
   confirmBookingPayment,
   markBookingReturned,
   processAdminDecision,
   submitBookingRequest,
   updateNotificationSettingsForAdmin,
+  updateTermsDocumentForAdmin,
 } from "./src/services.js";
 import { ensureDataFiles } from "./src/storage.js";
 
@@ -37,7 +40,7 @@ await ensureDataFiles();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const port = Number.parseInt(process.env.PORT || "3000", 10);
+const port = Number.parseInt(process.env.PORT || "3001", 10);
 const appName = String(process.env.APP_NAME || "Christ Congregation Adenta").trim();
 
 const staticRoutes = new Map([
@@ -58,6 +61,7 @@ const staticRoutes = new Map([
   ["/availability.js", "availability.js"],
   ["/track.js", "track.js"],
   ["/admin.js", "admin.js"],
+  ["/shared-layout.js", "shared-layout.js"],
   ["/pcg-logo.png", "pcg-logo.png"],
   ["/pcglogo.png", "pcglogo.png"],
   ["/bus-hero.svg", "bus-hero.svg"],
@@ -226,6 +230,41 @@ const server = createServer(async (request, response) => {
       }
 
       throw new HttpError(405, "Method not allowed.");
+    }
+
+    if (pathname === "/api/admin/terms") {
+      const session = assertAdminAccess(request.headers);
+
+      if (request.method === "GET") {
+        const result = await getTermsDocumentForAdmin();
+        return sendJson(response, result.statusCode, {
+          ...result.body,
+          adminName: session.adminName,
+        });
+      }
+
+      if (request.method === "POST") {
+        const body = await readJsonBody(request);
+        const result = await updateTermsDocumentForAdmin({
+          ...body,
+          updatedBy: session.adminName,
+        });
+        return sendJson(response, result.statusCode, {
+          ...result.body,
+          adminName: session.adminName,
+        });
+      }
+
+      throw new HttpError(405, "Method not allowed.");
+    }
+
+    if (pathname === "/api/terms") {
+      if (request.method !== "GET") {
+        throw new HttpError(405, "Method not allowed.");
+      }
+
+      const result = await getTermsDocument();
+      return sendJson(response, result.statusCode, result.body);
     }
 
     if (pathname === "/api/finance/session") {

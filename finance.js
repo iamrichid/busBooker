@@ -269,8 +269,7 @@ function openPaymentModal(bookingId, options = {}) {
     ["Status", getStatusLabel(booking.status || "pending")],
     ["Payment status", getPaymentLabel(booking.paymentStatus)],
     ["Tracking code", booking.trackingCode || "Not available"],
-    ["Booking type", booking.bookingType === "full_day" ? "Full day" : "Half day"],
-    ["Slot", formatSlot(booking)],
+    ["Trip window", formatSlot(booking)],
   ];
 
   confirmPaymentButton.disabled = booking.status !== "awaiting_payment" || booking.paymentStatus === "confirmed";
@@ -447,8 +446,10 @@ function setFinanceMessage(message, tone) {
 }
 
 function formatDate(value) {
-  return new Intl.DateTimeFormat(undefined, {
-    dateStyle: "medium",
+  return new Intl.DateTimeFormat("en-GB", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
   }).format(new Date(`${value}T00:00:00`));
 }
 
@@ -461,11 +462,7 @@ function formatDateRange(fromDate, toDate) {
 }
 
 function formatSlot(booking) {
-  if (booking.bookingType === "full_day") {
-    return "Full day";
-  }
-
-  return booking.timeSlot === "morning" ? "Half day • morning" : "Half day • afternoon";
+  return `${booking.startTime || "--:--"} to ${booking.endTime || "--:--"}`;
 }
 
 function getStatusLabel(status) {

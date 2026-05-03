@@ -2,6 +2,9 @@ const adminAccessCodeInput = document.querySelector("#adminAccessCode");
 const adminNameInput = document.querySelector("#adminName");
 const signInForm = document.querySelector("#adminSignInForm");
 const signInButton = document.querySelector("#signInButton");
+const openSmsCreditsButton = document.querySelector("#openSmsCreditsButton");
+const openContactsButton = document.querySelector("#openContactsButton");
+const openTermsButton = document.querySelector("#openTermsButton");
 const refreshBookingsButton = document.querySelector("#refreshBookingsButton");
 const logoutButton = document.querySelector("#logoutButton");
 const adminMessage = document.querySelector("#adminMessage");
@@ -10,6 +13,7 @@ const adminWorkspace = document.querySelector("#adminWorkspace");
 const activeAdminName = document.querySelector("#activeAdminName");
 const requestTableBody = document.querySelector("#requestTableBody");
 const requestTableCount = document.querySelector("#requestTableCount");
+const requestStatusFilter = document.querySelector("#requestStatusFilter");
 const rowTemplate = document.querySelector("#requestRowTemplate");
 const notificationSettingsForm = document.querySelector("#notificationSettingsForm");
 const adminContactPhones = document.querySelector("#adminContactPhones");
@@ -17,15 +21,35 @@ const financeContactPhones = document.querySelector("#financeContactPhones");
 const adminContactPhonesError = document.querySelector("#adminContactPhonesError");
 const financeContactPhonesError = document.querySelector("#financeContactPhonesError");
 const saveNotificationSettingsButton = document.querySelector("#saveNotificationSettingsButton");
+const termsDocumentForm = document.querySelector("#termsDocumentForm");
+const termsDocumentFile = document.querySelector("#termsDocumentFile");
+const termsDocumentFileHelp = document.querySelector("#termsDocumentFileHelp");
+const termsDocumentContent = document.querySelector("#termsDocumentContent");
+const termsDocumentContentError = document.querySelector("#termsDocumentContentError");
+const saveTermsDocumentButton = document.querySelector("#saveTermsDocumentButton");
+const smsCreditsModal = document.querySelector("#smsCreditsModal");
+const closeSmsCreditsModalButton = document.querySelector("#closeSmsCreditsModalButton");
+const contactsModal = document.querySelector("#contactsModal");
+const closeContactsModalButton = document.querySelector("#closeContactsModalButton");
+const termsModal = document.querySelector("#termsModal");
+const closeTermsModalButton = document.querySelector("#closeTermsModalButton");
 
 const requestModal = document.querySelector("#requestModal");
 const requestModalTitle = document.querySelector("#requestModalTitle");
 const requestModalMeta = document.querySelector("#requestModalMeta");
 const requestModalDetails = document.querySelector("#requestModalDetails");
 const requestModalDecisionPanel = document.querySelector("#requestModalDecisionPanel");
+const requestModalStageSummary = document.querySelector("#requestModalStageSummary");
 const requestModalProcessedPanel = document.querySelector("#requestModalProcessedPanel");
+const requestModalProcessedLabel = document.querySelector("#requestModalProcessedLabel");
 const requestModalProcessedText = document.querySelector("#requestModalProcessedText");
 const markReturnedButton = document.querySelector("#markReturnedButton");
+const returnConfirmModal = document.querySelector("#returnConfirmModal");
+const returnConfirmModalMeta = document.querySelector("#returnConfirmModalMeta");
+const returnConfirmModalText = document.querySelector("#returnConfirmModalText");
+const closeReturnConfirmModalButton = document.querySelector("#closeReturnConfirmModalButton");
+const confirmReturnButton = document.querySelector("#confirmReturnButton");
+const cancelReturnButton = document.querySelector("#cancelReturnButton");
 const requestModalVehicleSelect = document.querySelector("#requestModalVehicleSelect");
 const requestModalVehicleError = document.querySelector("#requestModalVehicleError");
 const requestModalDriverName = document.querySelector("#requestModalDriverName");
@@ -55,30 +79,54 @@ const state = {
   authenticated: false,
   fleet: [],
   bookings: [],
+  requestStatusFilter: "all",
   activeBookingId: null,
+  activeReturnBookingId: null,
   pendingBookingId: readRequestedBookingId(),
   notificationSettings: {
     adminPhones: [],
     financePhones: [],
   },
+  termsDocument: {
+    content: "",
+    fileName: "",
+    updatedAt: "",
+    updatedBy: "",
+  },
   smsCredits: null,
 };
 
 adminNameInput.value = state.adminName;
+requestStatusFilter.value = state.requestStatusFilter;
 setAdminMessage("Sign in to open the approval desk.", "neutral");
 
 signInForm.addEventListener("submit", handleSignIn);
+openSmsCreditsButton?.addEventListener("click", () => openUtilityModal(smsCreditsModal));
+openContactsButton?.addEventListener("click", () => openUtilityModal(contactsModal));
+openTermsButton?.addEventListener("click", () => openUtilityModal(termsModal));
 refreshBookingsButton?.addEventListener("click", () => loadBookings());
 logoutButton?.addEventListener("click", logout);
+requestStatusFilter?.addEventListener("change", () => {
+  state.requestStatusFilter = requestStatusFilter.value;
+  renderBookings(state.bookings);
+});
 notificationSettingsForm?.addEventListener("submit", handleSaveNotificationSettings);
+termsDocumentForm?.addEventListener("submit", handleSaveTermsDocument);
+closeSmsCreditsModalButton?.addEventListener("click", () => closeUtilityModal(smsCreditsModal));
+closeContactsModalButton?.addEventListener("click", () => closeUtilityModal(contactsModal));
+closeTermsModalButton?.addEventListener("click", () => closeUtilityModal(termsModal));
 closeRequestModalButton?.addEventListener("click", closeRequestModal);
+closeReturnConfirmModalButton?.addEventListener("click", closeReturnConfirmModal);
+confirmReturnButton?.addEventListener("click", markBusReturned);
+cancelReturnButton?.addEventListener("click", closeReturnConfirmModal);
 requestModalApproveButton?.addEventListener("click", () => submitModalDecision(getActiveApprovalDecision()));
 requestModalDeclineButton?.addEventListener("click", () => submitModalDecision("declined"));
-markReturnedButton?.addEventListener("click", markBusReturned);
+markReturnedButton?.addEventListener("click", () => openReturnConfirmModal(state.activeBookingId, { closeRequest: true }));
 requestModalDriverPhone?.addEventListener("input", () => {
   requestModalDriverPhone.value = requestModalDriverPhone.value.replace(/\D/g, "").slice(0, 10);
   requestModalDriverPhoneError.textContent = "";
 });
+termsDocumentFile?.addEventListener("change", handleTermsFileSelection);
 
 if (requestModal) {
   requestModal.addEventListener("click", (event) => {
@@ -88,9 +136,39 @@ if (requestModal) {
   });
 }
 
+[smsCreditsModal, contactsModal, termsModal].forEach((modal) => {
+  modal?.addEventListener("click", (event) => {
+    if (event.target === modal) {
+      closeUtilityModal(modal);
+    }
+  });
+});
+
+if (returnConfirmModal) {
+  returnConfirmModal.addEventListener("click", (event) => {
+    if (event.target === returnConfirmModal) {
+      closeReturnConfirmModal();
+    }
+  });
+}
+
 document.addEventListener("keydown", (event) => {
   if (event.key === "Escape" && requestModal?.open) {
     closeRequestModal();
+    return;
+  }
+
+  if (event.key === "Escape" && returnConfirmModal?.open) {
+    closeReturnConfirmModal();
+    return;
+  }
+
+  if (event.key === "Escape") {
+    [smsCreditsModal, contactsModal, termsModal].forEach((modal) => {
+      if (modal?.open) {
+        closeUtilityModal(modal);
+      }
+    });
   }
 });
 
@@ -153,12 +231,14 @@ async function signIn({ restoreSession = false } = {}) {
       state.adminName = sessionResult.adminName || adminName;
     }
 
-    const [bookingsResponse, settingsResponse] = await Promise.all([
+    const [bookingsResponse, settingsResponse, termsResponse] = await Promise.all([
       fetch("/api/admin/bookings"),
       fetch("/api/admin/notification-settings"),
+      fetch("/api/admin/terms"),
     ]);
     const result = await bookingsResponse.json();
     const settingsResult = await settingsResponse.json();
+    const termsResult = await termsResponse.json();
 
     if (!bookingsResponse.ok) {
       setAdminMessage(result.error || "Could not load admin bookings.", "error");
@@ -170,10 +250,16 @@ async function signIn({ restoreSession = false } = {}) {
       return;
     }
 
+    if (!termsResponse.ok) {
+      setAdminMessage(termsResult.error || "Could not load the terms document.", "error");
+      return;
+    }
+
     state.authenticated = true;
     state.fleet = result.fleet || [];
     state.bookings = result.bookings || [];
     state.notificationSettings = settingsResult.settings || state.notificationSettings;
+    state.termsDocument = termsResult.terms || state.termsDocument;
     state.smsCredits = result.smsCredits || null;
 
     localStorage.setItem("bus-booker-admin-name", state.adminName);
@@ -183,6 +269,7 @@ async function signIn({ restoreSession = false } = {}) {
     activeAdminName.textContent = state.adminName;
     renderBookings(state.bookings);
     renderNotificationSettings();
+    renderTermsDocument();
     renderSmsCredits();
     setAdminMessage(`Signed in as ${state.adminName}.`, "success");
   } catch (error) {
@@ -292,6 +379,55 @@ async function handleSaveNotificationSettings(event) {
   }
 }
 
+async function handleSaveTermsDocument(event) {
+  event.preventDefault();
+
+  if (!state.authenticated) {
+    return;
+  }
+
+  termsDocumentContentError.textContent = "";
+  saveTermsDocumentButton.disabled = true;
+  setAdminMessage("Saving terms and conditions...", "neutral");
+
+  try {
+    const response = await fetch("/api/admin/terms", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        content: termsDocumentContent.value,
+        fileName: termsDocumentFile?.files?.[0]?.name || state.termsDocument.fileName || "uploaded-terms.txt",
+      }),
+    });
+    const result = await response.json();
+
+    if (!response.ok) {
+      if (response.status === 401) {
+        await logout({ silent: true });
+        setAdminMessage("Your admin session has expired. Please sign in again.", "error");
+        return;
+      }
+
+      if (result.fields?.content) {
+        termsDocumentContentError.textContent = result.fields.content;
+      }
+
+      setAdminMessage(result.error || "Could not save the terms document.", "error");
+      return;
+    }
+
+    state.termsDocument = result.terms || state.termsDocument;
+    renderTermsDocument();
+    setAdminMessage(result.message || "Terms document saved.", "success");
+  } catch (error) {
+    setAdminMessage(error.message || "The server could not be reached.", "error");
+  } finally {
+    saveTermsDocumentButton.disabled = false;
+  }
+}
+
 async function logout(options = {}) {
   const { silent = false } = options;
 
@@ -313,6 +449,12 @@ async function logout(options = {}) {
     adminPhones: [],
     financePhones: [],
   };
+  state.termsDocument = {
+    content: "",
+    fileName: "",
+    updatedAt: "",
+    updatedBy: "",
+  };
   state.smsCredits = null;
 
   adminAccessCodeInput.value = "";
@@ -324,8 +466,12 @@ async function logout(options = {}) {
   requestTableCount.textContent = "0";
   adminContactPhones.value = "";
   financeContactPhones.value = "";
+  termsDocumentContent.value = "";
+  termsDocumentFile.value = "";
+  termsDocumentFileHelp.textContent = "No file selected yet.";
   adminContactPhonesError.textContent = "";
   financeContactPhonesError.textContent = "";
+  termsDocumentContentError.textContent = "";
   Object.values(summaryNodes).forEach((node) => {
     node.textContent = "0";
   });
@@ -338,8 +484,9 @@ async function logout(options = {}) {
 }
 
 function renderBookings(bookings) {
+  const visibleBookings = bookings.filter((booking) => matchesRequestStatusFilter(booking, state.requestStatusFilter));
   requestTableBody.replaceChildren();
-  requestTableCount.textContent = String(bookings.length);
+  requestTableCount.textContent = String(visibleBookings.length);
 
   const counts = {
     approved: 0,
@@ -350,6 +497,9 @@ function renderBookings(bookings) {
 
   bookings.forEach((booking) => {
     counts[booking.status] = (counts[booking.status] || 0) + 1;
+  });
+
+  visibleBookings.forEach((booking) => {
     requestTableBody.append(buildRow(booking));
   });
 
@@ -357,12 +507,15 @@ function renderBookings(bookings) {
     summaryNodes[status].textContent = String(counts[status] || 0);
   });
 
-  if (bookings.length === 0) {
+  if (visibleBookings.length === 0) {
     const row = document.createElement("tr");
     const cell = document.createElement("td");
     cell.colSpan = 7;
     cell.className = "table-empty";
-    cell.textContent = "No requests found yet.";
+    cell.textContent =
+      state.requestStatusFilter === "all"
+        ? "No requests found yet."
+        : "No requests match the selected status.";
     row.append(cell);
     requestTableBody.append(row);
   }
@@ -392,14 +545,19 @@ function buildRow(booking) {
 
   const fromDate = getFromDate(booking);
   const toDate = getToDate(booking);
+  const membershipLabel = booking.membershipNumber || "No membership number";
 
   dateCell.innerHTML = `
-    <div class="table-primary">${formatDateRange(fromDate, toDate)}</div>
-    <div class="table-secondary">${formatSlot(booking)}</div>
+    <div class="table-inline-detail">
+      <span class="table-primary">${formatDateRange(fromDate, toDate)}</span>
+      <span class="table-secondary">• ${formatSlot(booking)}</span>
+    </div>
   `;
   memberCell.innerHTML = `
-    <div class="table-primary">${escapeHtml(booking.requesterName)}</div>
-    <div class="table-secondary">${escapeHtml(booking.membershipNumber || "No membership number")}</div>
+    <div class="table-inline-detail">
+      <span class="table-primary">${escapeHtml(booking.requesterName)}</span>
+      <span class="table-secondary">• ${escapeHtml(membershipLabel)}</span>
+    </div>
   `;
   ministryCell.textContent = booking.ministryName || "Not provided";
   bookingCell.textContent = booking.eventName || "Untitled request";
@@ -410,7 +568,7 @@ function buildRow(booking) {
   badge.textContent = getStatusLabel(booking);
   statusCell.append(badge);
 
-  vehicleCell.textContent = getStageNote(booking);
+  vehicleCell.innerHTML = `<span class="table-note">${escapeHtml(getStageNote(booking))}</span>`;
 
   const actionWrap = document.createElement("div");
   actionWrap.className = "row-actions";
@@ -418,31 +576,16 @@ function buildRow(booking) {
   const viewButton = document.createElement("button");
   viewButton.type = "button";
   viewButton.className = "ghost-button row-button";
-  viewButton.textContent = "Open";
-  viewButton.addEventListener("click", () => openRequestModal(booking.id));
+  viewButton.textContent = getRowActionLabel(booking);
+  viewButton.addEventListener("click", () => {
+    if (booking.status === "approved" && !booking.returnedAt) {
+      openReturnConfirmModal(booking.id);
+      return;
+    }
+
+    openRequestModal(booking.id);
+  });
   actionWrap.append(viewButton);
-
-  if (booking.status === "pending" || booking.status === "awaiting_payment") {
-    const approveButton = document.createElement("button");
-    approveButton.type = "button";
-    approveButton.className = "primary-button row-button";
-    approveButton.textContent =
-      booking.status === "pending"
-        ? "Approve to pay"
-        : booking.paymentStatus === "confirmed"
-          ? "Release bus"
-          : "Waiting for payment";
-    approveButton.disabled = booking.status === "awaiting_payment" && booking.paymentStatus !== "confirmed";
-    approveButton.addEventListener("click", () => openRequestModal(booking.id, { focusDecision: true }));
-
-    const declineButton = document.createElement("button");
-    declineButton.type = "button";
-    declineButton.className = "ghost-button row-button";
-    declineButton.textContent = "Decline";
-    declineButton.addEventListener("click", () => quickDecline(booking.id));
-
-    actionWrap.append(approveButton, declineButton);
-  }
 
   actionsCell.append(actionWrap);
   return row;
@@ -458,8 +601,11 @@ function openRequestModal(bookingId, options = {}) {
   state.activeBookingId = bookingId;
   const fromDate = getFromDate(booking);
   const toDate = getToDate(booking);
-  requestModalTitle.textContent = booking.eventName || "Booking request";
-  requestModalMeta.textContent = `${formatDateRange(fromDate, toDate)} • ${formatSlot(booking)} • ${booking.requesterName}`;
+  const modalPresentation = getRequestModalPresentation(booking);
+  requestModalTitle.textContent = modalPresentation.title;
+  requestModalMeta.textContent = `${booking.requesterName} • ${formatDateRange(fromDate, toDate)} • ${formatSlot(booking)}`;
+  requestModalStageSummary.textContent = modalPresentation.summary;
+  requestModalProcessedLabel.textContent = modalPresentation.processedLabel;
   requestModalDetails.replaceChildren();
   requestModalVehicleError.textContent = "";
   requestModalDriverNameError.textContent = "";
@@ -559,7 +705,79 @@ function closeRequestModal() {
     requestModal.removeAttribute("open");
   }
 
-  document.body.classList.remove("dialog-open");
+  if (!returnConfirmModal?.open && !smsCreditsModal?.open && !contactsModal?.open && !termsModal?.open) {
+    document.body.classList.remove("dialog-open");
+  }
+}
+
+function openReturnConfirmModal(bookingId, options = {}) {
+  const booking = state.bookings.find((item) => item.id === bookingId);
+
+  if (!booking) {
+    return;
+  }
+
+  state.activeReturnBookingId = booking.id;
+  const fromDate = getFromDate(booking);
+  const toDate = getToDate(booking);
+  returnConfirmModalMeta.textContent = `${booking.requesterName} • ${formatDateRange(fromDate, toDate)} • ${formatSlot(booking)}`;
+  returnConfirmModalText.textContent = `Confirm that ${booking.assignedVehicleLabel || "the assigned bus"} has returned from ${booking.eventName || "this trip"} and is ready to be marked available again.`;
+
+  if (options.closeRequest) {
+    closeRequestModal();
+  }
+
+  if (returnConfirmModal?.showModal) {
+    returnConfirmModal.showModal();
+  } else {
+    returnConfirmModal.setAttribute("open", "");
+  }
+
+  document.body.classList.add("dialog-open");
+}
+
+function closeReturnConfirmModal() {
+  state.activeReturnBookingId = null;
+
+  if (returnConfirmModal?.close && returnConfirmModal.open) {
+    returnConfirmModal.close();
+  } else if (returnConfirmModal) {
+    returnConfirmModal.removeAttribute("open");
+  }
+
+  if (!requestModal?.open && !returnConfirmModal?.open && !smsCreditsModal?.open && !contactsModal?.open && !termsModal?.open) {
+    document.body.classList.remove("dialog-open");
+  }
+}
+
+function openUtilityModal(modal) {
+  if (!modal) {
+    return;
+  }
+
+  if (modal.showModal) {
+    modal.showModal();
+  } else {
+    modal.setAttribute("open", "");
+  }
+
+  document.body.classList.add("dialog-open");
+}
+
+function closeUtilityModal(modal) {
+  if (!modal) {
+    return;
+  }
+
+  if (modal.close && modal.open) {
+    modal.close();
+  } else {
+    modal.removeAttribute("open");
+  }
+
+  if (!requestModal?.open && !returnConfirmModal?.open && !smsCreditsModal?.open && !contactsModal?.open && !termsModal?.open) {
+    document.body.classList.remove("dialog-open");
+  }
 }
 
 function readRequestedBookingId() {
@@ -653,13 +871,14 @@ async function submitModalDecision(decision) {
 }
 
 async function markBusReturned() {
-  const booking = state.bookings.find((item) => item.id === state.activeBookingId);
+  const booking = state.bookings.find((item) => item.id === state.activeReturnBookingId);
 
   if (!booking) {
     return;
   }
 
-  markReturnedButton.disabled = true;
+  confirmReturnButton.disabled = true;
+  cancelReturnButton.disabled = true;
 
   try {
     const response = await fetch(`/api/admin/bookings/return?id=${encodeURIComponent(booking.id)}`, {
@@ -683,11 +902,13 @@ async function markBusReturned() {
     }
 
     setAdminMessage(result.message || "Bus marked as returned.", "success");
+    closeReturnConfirmModal();
     await loadBookings();
   } catch (error) {
     setAdminMessage(error.message || "The server could not be reached.", "error");
   } finally {
-    markReturnedButton.disabled = false;
+    confirmReturnButton.disabled = false;
+    cancelReturnButton.disabled = false;
   }
 }
 
@@ -699,6 +920,50 @@ function getActiveApprovalDecision() {
   }
 
   return "approved";
+}
+
+function getRowActionLabel(booking) {
+  if (booking.status === "pending") {
+    return "Approve";
+  }
+
+  if (booking.status === "awaiting_payment") {
+    return booking.paymentStatus === "confirmed" ? "Release" : "Review";
+  }
+
+  if (booking.status === "approved") {
+    return booking.returnedAt ? "View" : "Return";
+  }
+
+  if (booking.status === "declined") {
+    return "View";
+  }
+
+  return "Review";
+}
+
+function matchesRequestStatusFilter(booking, filterValue) {
+  if (filterValue === "all") {
+    return true;
+  }
+
+  if (filterValue === "returned") {
+    return booking.status === "approved" && Boolean(booking.returnedAt);
+  }
+
+  if (filterValue === "ready_to_release") {
+    return booking.status === "awaiting_payment" && booking.paymentStatus === "confirmed";
+  }
+
+  if (filterValue === "approved") {
+    return booking.status === "approved" && !booking.returnedAt;
+  }
+
+  if (filterValue === "awaiting_payment") {
+    return booking.status === "awaiting_payment" && booking.paymentStatus !== "confirmed";
+  }
+
+  return booking.status === filterValue;
 }
 
 async function quickDecline(bookingId) {
@@ -730,8 +995,10 @@ function setAuthBusy(isBusy) {
 }
 
 function formatDate(value) {
-  return new Intl.DateTimeFormat(undefined, {
-    dateStyle: "medium",
+  return new Intl.DateTimeFormat("en-GB", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
   }).format(new Date(`${value}T00:00:00`));
 }
 
@@ -744,18 +1011,17 @@ function formatDateRange(fromDate, toDate) {
 }
 
 function formatDateTime(value) {
-  return new Intl.DateTimeFormat(undefined, {
-    dateStyle: "medium",
-    timeStyle: "short",
+  return new Intl.DateTimeFormat("en-GB", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
   }).format(new Date(value));
 }
 
 function formatSlot(booking) {
-  if (booking.bookingType === "full_day") {
-    return "Full day";
-  }
-
-  return booking.timeSlot === "morning" ? "Half day • morning" : "Half day • afternoon";
+  return `${booking.startTime || "--:--"} to ${booking.endTime || "--:--"}`;
 }
 
 function getFromDate(booking) {
@@ -780,6 +1046,47 @@ function setAdminMessage(message, tone) {
 function renderNotificationSettings() {
   adminContactPhones.value = formatPhoneList(state.notificationSettings.adminPhones);
   financeContactPhones.value = formatPhoneList(state.notificationSettings.financePhones);
+}
+
+function renderTermsDocument() {
+  termsDocumentContent.value = state.termsDocument.content || "";
+  termsDocumentContentError.textContent = "";
+
+  const parts = [];
+
+  if (state.termsDocument.fileName) {
+    parts.push(`Source: ${state.termsDocument.fileName}`);
+  }
+
+  if (state.termsDocument.updatedAt) {
+    parts.push(`Updated: ${formatDateTime(state.termsDocument.updatedAt)}`);
+  }
+
+  if (state.termsDocument.updatedBy) {
+    parts.push(`By: ${state.termsDocument.updatedBy}`);
+  }
+
+  termsDocumentFileHelp.textContent = parts.join(" • ") || "No file selected yet.";
+}
+
+async function handleTermsFileSelection() {
+  termsDocumentContentError.textContent = "";
+
+  const file = termsDocumentFile?.files?.[0];
+
+  if (!file) {
+    renderTermsDocument();
+    return;
+  }
+
+  try {
+    const text = await file.text();
+    termsDocumentContent.value = text;
+    termsDocumentFileHelp.textContent = `Selected file: ${file.name}`;
+  } catch (error) {
+    termsDocumentContentError.textContent = "The selected file could not be read.";
+    setAdminMessage(error.message || "Could not read the selected text file.", "error");
+  }
 }
 
 function renderSmsCredits() {
@@ -848,10 +1155,67 @@ function configureDecisionPanel(booking) {
         ? "Release bus"
         : "Waiting for payment";
   requestModalApproveButton.disabled = isWaitingForPayment;
+  requestModalDeclineButton.textContent = booking.status === "pending" ? "Decline request" : "Decline booking";
 
   if (isWaitingForPayment) {
     requestModalVehicleError.textContent = "Finance must confirm payment before release.";
   }
+}
+
+function getRequestModalPresentation(booking) {
+  if (booking.status === "pending") {
+    return {
+      title: booking.eventName || "Review request",
+      summary: `${booking.availableVehicles?.length || 0} buses available. Review the trip and decide whether to move it to payment.`,
+      processedLabel: "Request stage",
+    };
+  }
+
+  if (booking.status === "awaiting_payment" && booking.paymentStatus === "confirmed") {
+    return {
+      title: booking.eventName || "Ready to release",
+      summary: "Payment has been confirmed. Assign the bus, driver, and approving authority to release this trip.",
+      processedLabel: "Release stage",
+    };
+  }
+
+  if (booking.status === "awaiting_payment") {
+    return {
+      title: booking.eventName || "Awaiting payment",
+      summary: "Approval is complete. This booking is waiting for finance confirmation before the bus can be released.",
+      processedLabel: "Payment stage",
+    };
+  }
+
+  if (booking.status === "approved" && booking.returnedAt) {
+    return {
+      title: booking.eventName || "Returned trip",
+      summary: "This trip has been completed and the bus has been marked as returned.",
+      processedLabel: "Return stage",
+    };
+  }
+
+  if (booking.status === "approved") {
+    return {
+      title: booking.eventName || "Released trip",
+      summary: "This booking has been released. Review the assigned vehicle and trip details below.",
+      processedLabel: "Release stage",
+    };
+  }
+
+  if (booking.status === "declined") {
+    return {
+      title: booking.eventName || "Declined request",
+      summary: "This request was declined. You can still review the original trip details and decision notes here.",
+      processedLabel: "Decision stage",
+    };
+  }
+
+  return {
+    title: booking.eventName || "Booking request",
+    summary: "Review the trip details below.",
+    processedLabel: "Request stage",
+  };
 }
 
 function getStatusLabel(bookingOrStatus) {
@@ -908,7 +1272,15 @@ function getStageNote(booking) {
 
 function getProcessedPanelText(booking) {
   if (booking.returnedAt) {
-    return `Returned by ${booking.returnedBy || "Unknown"} on ${formatDateTime(booking.returnedAt)}.`;
+    return `Returned by ${booking.returnedBy || "Unknown"} on ${formatDateTime(booking.returnedAt)}. This bus is now available for future bookings.`;
+  }
+
+  if (booking.status === "declined") {
+    return `Declined by ${booking.processedBy || "Unknown"} on ${formatDateTime(booking.processedAt)}.`;
+  }
+
+  if (booking.status === "approved") {
+    return `Released by ${booking.processedBy || "Unknown"} on ${formatDateTime(booking.processedAt)}.`;
   }
 
   if (booking.processedAt) {

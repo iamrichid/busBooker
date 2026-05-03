@@ -10,7 +10,6 @@ import {
 } from "../src/bookings.js";
 
 const validBooking = {
-  bookingType: "half_day",
   destination: "Kasoa prayer center",
   endLocation: "Church auditorium",
   endLocationMode: "same_as_setoff",
@@ -29,14 +28,13 @@ const validBooking = {
   requesterName: "Martha Owusu",
   startTime: "08:30",
   termsAccepted: "on",
-  timeSlot: "morning",
   toDate: "2099-08-15",
 };
 
 test("validateBookingRequest accepts a complete future booking", () => {
   const result = validateBookingRequest(validBooking);
   assert.equal(result.ok, true);
-  assert.equal(result.value.timeSlot, "morning");
+  assert.equal(result.value.startTime, "08:30");
 });
 
 test("buildBookingRecord creates a public tracking code", () => {
@@ -86,25 +84,24 @@ test("validateBookingRequest enforces 10-digit Ghana phone numbers", () => {
   assert.equal(result.errors.phone, "Please enter a valid 10-digit Ghana phone number.");
 });
 
-test("validateBookingRequest requires a slot for half-day bookings", () => {
+test("validateBookingRequest requires a start time", () => {
   const result = validateBookingRequest({
     ...validBooking,
-    timeSlot: "",
+    startTime: "",
   });
 
   assert.equal(result.ok, false);
-  assert.equal(result.errors.timeSlot, "Choose morning or afternoon for a half-day booking.");
+  assert.equal(result.errors.startTime, "Please choose a valid start time.");
 });
 
-test("validateBookingRequest coerces full-day bookings to a full-day slot", () => {
+test("validateBookingRequest rejects same-day end times earlier than start time", () => {
   const result = validateBookingRequest({
     ...validBooking,
-    bookingType: "full_day",
-    timeSlot: "morning",
+    endTime: "08:00",
   });
 
-  assert.equal(result.ok, true);
-  assert.equal(result.value.timeSlot, "full_day");
+  assert.equal(result.ok, false);
+  assert.equal(result.errors.endTime, "End time must be later than start time for same-day trips.");
 });
 
 test("validateBookingRequest rejects end date before start date", () => {
@@ -118,31 +115,31 @@ test("validateBookingRequest rejects end date before start date", () => {
   assert.equal(result.errors.toDate, "End date cannot be earlier than start date.");
 });
 
-test("hasScheduleConflict matches same day and slot", () => {
+test("hasScheduleConflict matches same day overlapping times", () => {
   assert.equal(
     hasScheduleConflict(
-      { fromDate: "2099-08-15", toDate: "2099-08-15", timeSlot: "morning" },
-      { fromDate: "2099-08-15", toDate: "2099-08-15", timeSlot: "morning" },
+      { fromDate: "2099-08-15", toDate: "2099-08-15", startTime: "08:00", endTime: "12:00" },
+      { fromDate: "2099-08-15", toDate: "2099-08-15", startTime: "10:00", endTime: "13:00" },
     ),
     true,
   );
 });
 
-test("hasScheduleConflict blocks any booking against a full-day booking", () => {
+test("hasScheduleConflict ignores same day bookings with separated times", () => {
   assert.equal(
     hasScheduleConflict(
-      { fromDate: "2099-08-15", toDate: "2099-08-15", timeSlot: "full_day" },
-      { fromDate: "2099-08-15", toDate: "2099-08-15", timeSlot: "afternoon" },
+      { fromDate: "2099-08-15", toDate: "2099-08-15", startTime: "08:00", endTime: "10:00" },
+      { fromDate: "2099-08-15", toDate: "2099-08-15", startTime: "10:00", endTime: "12:00" },
     ),
-    true,
+    false,
   );
 });
 
 test("hasScheduleConflict detects overlap inside a multi-day range", () => {
   assert.equal(
     hasScheduleConflict(
-      { fromDate: "2099-08-15", toDate: "2099-08-18", timeSlot: "morning" },
-      { fromDate: "2099-08-17", toDate: "2099-08-20", timeSlot: "morning" },
+      { fromDate: "2099-08-15", toDate: "2099-08-18", startTime: "08:00", endTime: "16:00" },
+      { fromDate: "2099-08-17", toDate: "2099-08-20", startTime: "09:00", endTime: "12:00" },
     ),
     true,
   );
@@ -151,8 +148,8 @@ test("hasScheduleConflict detects overlap inside a multi-day range", () => {
 test("hasScheduleConflict ignores non-overlapping date ranges", () => {
   assert.equal(
     hasScheduleConflict(
-      { fromDate: "2099-08-15", toDate: "2099-08-16", timeSlot: "morning" },
-      { fromDate: "2099-08-17", toDate: "2099-08-18", timeSlot: "morning" },
+      { fromDate: "2099-08-15", toDate: "2099-08-16", startTime: "08:00", endTime: "09:00" },
+      { fromDate: "2099-08-17", toDate: "2099-08-18", startTime: "08:00", endTime: "09:00" },
     ),
     false,
   );
@@ -166,14 +163,16 @@ test("findConflict ignores non-approved bookings by default", () => {
         status: "pending",
         fromDate: "2099-08-15",
         toDate: "2099-08-15",
-        timeSlot: "morning",
+        startTime: "08:00",
+        endTime: "10:00",
       },
     ],
     {
       id: "2",
       fromDate: "2099-08-15",
       toDate: "2099-08-15",
-      timeSlot: "morning",
+      startTime: "09:00",
+      endTime: "11:00",
     },
   );
 

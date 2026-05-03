@@ -15,20 +15,7 @@
   </head>
   <body class="admin-shell">
     <main class="page page-admin">
-      <section class="member-brand-strip">
-        <img src="/pcglogo.png" alt="Presbyterian Church of Ghana logo" class="member-brand-strip-logo" />
-        <div class="member-brand-strip-copy">
-          <p class="member-brand-strip-name">Christ Congregation Adentan</p>
-          <p class="member-brand-strip-role">Presbyterian Church of Ghana</p>
-        </div>
-      </section>
-
-      <section class="request-topbar">
-        <div>
-          <p class="eyebrow">Finance Desk</p>
-          <h1 class="font-display">Church Bus Finance Desk</h1>
-        </div>
-      </section>
+      <pcg-page-header eyebrow="Finance Desk" title="Church Bus Finance Desk"></pcg-page-header>
 
       <section class="admin-stage admin-stage-auth-only">
         <section id="financeAuthPanel" class="auth-panel">
@@ -160,6 +147,7 @@
       </tr>
     </template>
 
+    <script type="module" src="/shared-layout.js"></script>
     <script type="module" src="/finance.js"></script>
   </body>
 </html>

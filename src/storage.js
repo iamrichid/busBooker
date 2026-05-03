@@ -8,10 +8,12 @@ const bookingsFile = path.join(dataDir, "bookings.json");
 const notificationsFile = path.join(dataDir, "notifications.log");
 const notificationSettingsFile = path.join(dataDir, "notification-settings.json");
 const smsCreditStatusFile = path.join(dataDir, "sms-credit-status.json");
+const termsDocumentFile = path.join(dataDir, "terms-document.json");
 const bookingBlobPrefix = "bus-booker/bookings/";
 const notificationBlobPrefix = "bus-booker/notifications/";
 const notificationSettingsBlobPath = "bus-booker/settings/notification-settings.json";
 const smsCreditStatusBlobPath = "bus-booker/settings/sms-credit-status.json";
+const termsDocumentBlobPath = "bus-booker/settings/terms-document.json";
 
 export async function ensureDataFiles() {
   if (usesBlobStorage()) {
@@ -37,10 +39,9 @@ export async function ensureDataFiles() {
   } catch (error) {
     if (error.code === "ENOENT") {
       await writeFile(notificationSettingsFile, `${JSON.stringify(getDefaultNotificationSettings(), null, 2)}\n`, "utf8");
-      return;
+    } else {
+      throw error;
     }
-
-    throw error;
   }
 
   try {
@@ -48,10 +49,19 @@ export async function ensureDataFiles() {
   } catch (error) {
     if (error.code === "ENOENT") {
       await writeFile(smsCreditStatusFile, `${JSON.stringify(getDefaultSmsCreditStatus(), null, 2)}\n`, "utf8");
-      return;
+    } else {
+      throw error;
     }
+  }
 
-    throw error;
+  try {
+    await readFile(termsDocumentFile, "utf8");
+  } catch (error) {
+    if (error.code === "ENOENT") {
+      await writeFile(termsDocumentFile, `${JSON.stringify(getDefaultTermsDocument(), null, 2)}\n`, "utf8");
+    } else {
+      throw error;
+    }
   }
 }
 
@@ -162,6 +172,41 @@ export async function saveSmsCreditStatus(status) {
   assertWritableLocalStorage();
   await ensureDataFiles();
   await writeFile(smsCreditStatusFile, `${JSON.stringify(normalized, null, 2)}\n`, "utf8");
+  return normalized;
+}
+
+export async function readTermsDocument() {
+  if (usesBlobStorage()) {
+    const blobTerms = await readBlobJson(termsDocumentBlobPath);
+    return normalizeTermsDocument(blobTerms);
+  }
+
+  assertWritableLocalStorage();
+  await ensureDataFiles();
+  const raw = await readFile(termsDocumentFile, "utf8");
+  return normalizeTermsDocument(JSON.parse(raw));
+}
+
+export async function saveTermsDocument(document) {
+  const normalized = normalizeTermsDocument(document);
+
+  if (usesBlobStorage()) {
+    const { put } = await loadBlobSdk();
+    await put(
+      termsDocumentBlobPath,
+      `${JSON.stringify(normalized, null, 2)}\n`,
+      {
+        access: "private",
+        addRandomSuffix: false,
+        contentType: "application/json",
+      },
+    );
+    return normalized;
+  }
+
+  assertWritableLocalStorage();
+  await ensureDataFiles();
+  await writeFile(termsDocumentFile, `${JSON.stringify(normalized, null, 2)}\n`, "utf8");
   return normalized;
 }
 
@@ -295,6 +340,18 @@ export function normalizeNotificationSettings(settings) {
   };
 }
 
+export function normalizeTermsDocument(document) {
+  const safeDocument = document && typeof document === "object" ? document : {};
+  const fallback = getDefaultTermsDocument();
+
+  return {
+    content: normalizeLongText(safeDocument.content, fallback.content),
+    fileName: normalizeShortText(safeDocument.fileName, fallback.fileName),
+    updatedAt: normalizeShortText(safeDocument.updatedAt, fallback.updatedAt),
+    updatedBy: normalizeShortText(safeDocument.updatedBy, fallback.updatedBy),
+  };
+}
+
 function normalizePhoneList(value, fallback = []) {
   if (!Array.isArray(value)) {
     return [...fallback];
@@ -305,6 +362,16 @@ function normalizePhoneList(value, fallback = []) {
     .filter(Boolean);
 
   return [...new Set(phones)];
+}
+
+function normalizeLongText(value, fallback = "") {
+  const text = String(value || "").trim();
+  return text || fallback;
+}
+
+function normalizeShortText(value, fallback = "") {
+  const text = String(value || "").trim();
+  return text || fallback;
 }
 
 function getDefaultNotificationSettings() {
@@ -326,6 +393,21 @@ function getDefaultSmsCreditStatus() {
     recipientCount: null,
     segmentsPerMessage: null,
     totalCost: null,
+  };
+}
+
+function getDefaultTermsDocument() {
+  return {
+    content: [
+      "1. All bus requests are subject to review and approval by the transport desk.",
+      "2. The requester is responsible for providing accurate dates, times, destination, and passenger count.",
+      "3. Approved trips must follow the agreed departure and return times unless the transport desk grants a change.",
+      "4. The bus must be used only for the stated church or authorised event.",
+      "5. Any loss, damage, or late return must be reported to the transport desk immediately.",
+    ].join("\n\n"),
+    fileName: "default-terms.txt",
+    updatedAt: "",
+    updatedBy: "",
   };
 }
 

@@ -1,7 +1,5 @@
 import {
   buildBookingRecord,
-  getBookingTypeLabel,
-  getTimeSlotLabel,
   sanitizeDecisionInput,
   validateBookingRequest,
 } from "./bookings.js";
@@ -17,8 +15,10 @@ import {
   readBookings,
   readNotificationSettings,
   readSmsCreditStatus,
+  readTermsDocument,
   saveBooking,
   saveNotificationSettings,
+  saveTermsDocument,
 } from "./storage.js";
 
 export async function submitBookingRequest(input) {
@@ -121,6 +121,53 @@ export async function updateNotificationSettingsForAdmin(input) {
   };
 }
 
+export async function getTermsDocument() {
+  return {
+    body: {
+      terms: await readTermsDocument(),
+    },
+    statusCode: 200,
+  };
+}
+
+export async function getTermsDocumentForAdmin() {
+  return {
+    body: {
+      terms: await readTermsDocument(),
+    },
+    statusCode: 200,
+  };
+}
+
+export async function updateTermsDocumentForAdmin(input) {
+  const content = String(input.content || "").trim();
+  const fileName = String(input.fileName || "").trim() || "uploaded-terms.txt";
+  const updatedBy = String(input.updatedBy || "").trim();
+
+  if (!content) {
+    throw new HttpError(400, "Terms content is required.", {
+      fields: {
+        content: "Upload or enter the terms text before saving.",
+      },
+    });
+  }
+
+  const terms = await saveTermsDocument({
+    content,
+    fileName,
+    updatedAt: new Date().toISOString(),
+    updatedBy,
+  });
+
+  return {
+    body: {
+      message: "Terms and conditions saved successfully.",
+      terms,
+    },
+    statusCode: 200,
+  };
+}
+
 export async function listBookingsForFinance() {
   const bookings = await readBookings();
 
@@ -141,12 +188,12 @@ export async function listAvailability() {
   return {
     body: {
       bookings: approvedBookings.map((booking) => ({
-        bookingType: booking.bookingType,
         eventName: booking.eventName,
         fromDate: booking.fromDate || booking.travelDate,
         id: booking.id,
-        timeSlot: booking.timeSlot,
+        startTime: booking.startTime,
         toDate: booking.toDate || booking.travelDate,
+        endTime: booking.endTime,
       })),
       generatedAt: new Date().toISOString(),
     },
@@ -463,7 +510,6 @@ function toTrackingView(booking) {
     adminNotes: booking.adminNotes || "",
     assignedVehicleLabel: booking.assignedVehicleLabel || "",
     balance: booking.balance || 0,
-    bookingType: booking.bookingType,
     destination: booking.destination,
     eventName: booking.eventName,
     fromDate: booking.fromDate || booking.travelDate,
@@ -472,20 +518,21 @@ function toTrackingView(booking) {
     processedAt: booking.processedAt || "",
     requesterName: booking.requesterName,
     returnedAt: booking.returnedAt || "",
+    startTime: booking.startTime || "",
     status: booking.status || "pending",
     submittedAt: booking.submittedAt,
-    timeSlot: booking.timeSlot,
     toDate: booking.toDate || booking.travelDate,
+    endTime: booking.endTime || "",
     trackingCode: booking.trackingCode,
   };
 }
 
 function formatSlot(booking) {
-  const timeSlotLabel =
-    booking.bookingType === "half_day" ? `, ${getTimeSlotLabel(booking.timeSlot)}` : "";
   const fromDate = booking.fromDate || booking.travelDate;
   const toDate = booking.toDate || booking.travelDate;
+  const startTime = booking.startTime || "--:--";
+  const endTime = booking.endTime || "--:--";
   const dateLabel = fromDate === toDate ? fromDate : `${fromDate} to ${toDate}`;
 
-  return `${dateLabel} (${getBookingTypeLabel(booking.bookingType)}${timeSlotLabel})`;
+  return `${dateLabel} (${startTime} to ${endTime})`;
 }

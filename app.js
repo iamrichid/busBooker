@@ -1,20 +1,30 @@
 const dialog = document.querySelector("#bookingDialog");
 const form = document.querySelector("#booking-form");
-const bookingType = document.querySelector("#bookingType");
 const memberStatus = document.querySelector("#memberStatus");
 const membershipNumberWrap = document.querySelector("#membershipNumberWrap");
 const phoneInput = document.querySelector("#phone");
-const timeSlot = document.querySelector("#timeSlot");
-const timeSlotWrap = document.querySelector("#timeSlotWrap");
 const endLocationMode = document.querySelector("#endLocationMode");
 const endLocationWrap = document.querySelector("#endLocationWrap");
 const fromDateInput = document.querySelector("#fromDate");
 const toDateInput = document.querySelector("#toDate");
+const fromDateDisplay = document.querySelector("#fromDateDisplay");
+const toDateDisplay = document.querySelector("#toDateDisplay");
 const startTimeInput = document.querySelector("#startTime");
 const endTimeInput = document.querySelector("#endTime");
 const submitButton = document.querySelector("#submitButton");
 const formMessage = document.querySelector("#formMessage");
 const pageNotice = document.querySelector("#pageNotice");
+const termsDocumentMeta = document.querySelector("#termsDocumentMeta");
+const termsModalMeta = document.querySelector("#termsModalMeta");
+const termsDocumentContent = document.querySelector("#termsDocumentContent");
+const termsAcceptedInput = document.querySelector("#termsAccepted");
+const termsAgreementStatus = document.querySelector("#termsAgreementStatus");
+const openTermsModalButton = document.querySelector("#openTermsModalButton");
+const termsModal = document.querySelector("#termsModal");
+const closeTermsModalButton = document.querySelector("#closeTermsModalButton");
+const cancelTermsButton = document.querySelector("#cancelTermsButton");
+const agreeTermsButton = document.querySelector("#agreeTermsButton");
+const termsScrollHint = document.querySelector("#termsScrollHint");
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const GHANA_PHONE_PATTERN = /^0\d{9}$/;
 const LIVE_VALIDATE_FIELDS = [
@@ -33,8 +43,6 @@ const LIVE_VALIDATE_FIELDS = [
   "startTime",
   "toDate",
   "endTime",
-  "bookingType",
-  "timeSlot",
   "pickupLocation",
   "destination",
   "termsAccepted",
@@ -48,20 +56,36 @@ document.querySelector("#closeBookingButton")?.addEventListener("click", closeBo
 document.querySelector("#cancelBookingButton")?.addEventListener("click", closeBookingDialog);
 
 setDateBounds();
-prefillDatesFromQuery();
+prefillBookingWindowFromQuery();
 clearMessage();
 clearPageNotice();
-syncBookingType();
+loadTermsDocument();
 syncMembershipState();
 syncEndLocationState();
+bindCustomDateField({
+  input: fromDateInput,
+  display: fromDateDisplay,
+  fieldName: "fromDate",
+  emptyLabel: "Select date",
+});
+bindCustomDateField({
+  input: toDateInput,
+  display: toDateDisplay,
+  fieldName: "toDate",
+  emptyLabel: "Select date",
+});
 
-bookingType?.addEventListener("change", syncBookingType);
 memberStatus?.addEventListener("change", syncMembershipState);
 endLocationMode?.addEventListener("change", syncEndLocationState);
 phoneInput?.addEventListener("input", sanitizePhoneInput);
 fromDateInput?.addEventListener("change", syncDateAndTimeBounds);
 toDateInput?.addEventListener("change", syncDateAndTimeBounds);
 fromDateInput?.addEventListener("change", syncToDateWithFromDate);
+openTermsModalButton?.addEventListener("click", openTermsModal);
+closeTermsModalButton?.addEventListener("click", closeTermsModal);
+cancelTermsButton?.addEventListener("click", closeTermsModal);
+agreeTermsButton?.addEventListener("click", acceptTermsFromModal);
+termsDocumentContent?.addEventListener("scroll", syncTermsModalProgress);
 form?.addEventListener("submit", handleSubmit);
 bindLiveValidation();
 initHeroCarousel();
@@ -74,7 +98,20 @@ if (dialog) {
   });
 }
 
+if (termsModal) {
+  termsModal.addEventListener("click", (event) => {
+    if (event.target === termsModal) {
+      closeTermsModal();
+    }
+  });
+}
+
 document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && termsModal?.open) {
+    closeTermsModal();
+    return;
+  }
+
   if (event.key === "Escape" && isDialogOpen()) {
     closeBookingDialog();
   }
@@ -117,7 +154,6 @@ async function handleSubmit(event) {
     }
 
     form.reset();
-    syncBookingType();
     syncMembershipState();
     setDateBounds();
     clearErrors();
@@ -149,26 +185,17 @@ async function handleSubmit(event) {
   }
 }
 
-function syncBookingType() {
-  if (!bookingType || !timeSlotWrap || !timeSlot) {
-    return;
-  }
-
-  const isFullDay = bookingType.value === "full_day";
-  timeSlotWrap.hidden = isFullDay;
-  timeSlot.required = !isFullDay;
-  timeSlot.value = isFullDay ? "full_day" : "morning";
-}
-
 function setDateBounds() {
   const today = currentLocalDateString();
 
   if (fromDateInput) {
     fromDateInput.min = today;
+    syncCustomDateField(fromDateInput, fromDateDisplay, "Select date");
   }
 
   if (toDateInput) {
     toDateInput.min = fromDateInput?.value || today;
+    syncCustomDateField(toDateInput, toDateDisplay, "Select date");
   }
 
 }
@@ -182,6 +209,7 @@ function syncToDateWithFromDate() {
 
   if (toDateInput.value && fromDateInput.value && toDateInput.value < fromDateInput.value) {
     toDateInput.value = fromDateInput.value;
+    syncCustomDateField(toDateInput, toDateDisplay, "Select date");
   }
 
   clearErrorsForFields(["fromDate", "toDate", "startTime", "endTime"]);
@@ -293,7 +321,8 @@ function isDialogOpen() {
 function showFieldErrors(errors) {
   for (const [field, message] of Object.entries(errors)) {
     const errorNode = document.querySelector(`[data-error-for="${field}"]`);
-    const inputNode = getFieldInput(field);
+    const inputNode = getFormField(field);
+    const visibleNode = getVisibleField(field);
 
     if (errorNode) {
       errorNode.textContent = message;
@@ -301,6 +330,10 @@ function showFieldErrors(errors) {
 
     if (inputNode) {
       inputNode.setAttribute("aria-invalid", "true");
+    }
+
+    if (visibleNode && visibleNode !== inputNode) {
+      visibleNode.setAttribute("aria-invalid", "true");
     }
   }
 }
@@ -318,7 +351,8 @@ function clearErrors() {
 function clearErrorsForFields(fields) {
   fields.forEach((field) => {
     const errorNode = document.querySelector(`[data-error-for="${field}"]`);
-    const inputNode = getFieldInput(field);
+    const inputNode = getFormField(field);
+    const visibleNode = getVisibleField(field);
 
     if (errorNode) {
       errorNode.textContent = "";
@@ -326,6 +360,10 @@ function clearErrorsForFields(fields) {
 
     if (inputNode) {
       inputNode.removeAttribute("aria-invalid");
+    }
+
+    if (visibleNode && visibleNode !== inputNode) {
+      visibleNode.removeAttribute("aria-invalid");
     }
   });
 }
@@ -380,6 +418,102 @@ function setPageNotice(message, tone) {
   pageNotice.dataset.tone = tone;
 }
 
+async function loadTermsDocument() {
+  if (!termsDocumentMeta || !termsDocumentContent || !termsModalMeta) {
+    return;
+  }
+
+  termsDocumentMeta.textContent = "Loading current terms...";
+
+  try {
+    const response = await fetch("/api/terms");
+    const result = await response.json();
+
+    if (!response.ok) {
+      renderTermsDocument({
+        content: "The latest transport terms could not be loaded right now.",
+      });
+      return;
+    }
+
+    renderTermsDocument(result.terms || {});
+  } catch {
+    renderTermsDocument({
+      content: "The latest transport terms could not be loaded right now.",
+    });
+  }
+}
+
+function renderTermsDocument(terms) {
+  if (!termsDocumentMeta || !termsDocumentContent || !termsModalMeta) {
+    return;
+  }
+
+  const safeTerms = terms && typeof terms === "object" ? terms : {};
+  const metaText = safeTerms.updatedAt
+    ? `Updated ${formatDateDisplayOnly(safeTerms.updatedAt)}`
+    : "Current saved version";
+  termsDocumentMeta.textContent = metaText;
+  termsModalMeta.textContent = metaText;
+  termsDocumentContent.textContent = String(safeTerms.content || "").trim() || "No terms are available yet.";
+  syncTermsModalProgress();
+}
+
+function openTermsModal() {
+  if (!termsModal) {
+    return;
+  }
+
+  syncTermsModalProgress(true);
+
+  if (termsModal.showModal) {
+    termsModal.showModal();
+  } else {
+    termsModal.setAttribute("open", "");
+  }
+}
+
+function closeTermsModal() {
+  if (!termsModal) {
+    return;
+  }
+
+  if (termsModal.close && termsModal.open) {
+    termsModal.close();
+  } else {
+    termsModal.removeAttribute("open");
+  }
+}
+
+function syncTermsModalProgress(resetScroll = false) {
+  if (!termsDocumentContent || !agreeTermsButton || !termsScrollHint) {
+    return;
+  }
+
+  if (resetScroll) {
+    termsDocumentContent.scrollTop = 0;
+  }
+
+  const maxScroll = termsDocumentContent.scrollHeight - termsDocumentContent.clientHeight;
+  const isAtEnd = maxScroll <= 12 || termsDocumentContent.scrollTop >= maxScroll - 12;
+
+  agreeTermsButton.disabled = !isAtEnd;
+  termsScrollHint.textContent = isAtEnd
+    ? "You have reached the end. You can now agree."
+    : "Scroll to the end to enable the agree button.";
+}
+
+function acceptTermsFromModal() {
+  if (!termsAcceptedInput || !termsAgreementStatus) {
+    return;
+  }
+
+  termsAcceptedInput.checked = true;
+  termsAgreementStatus.textContent = "Agreed. You can now submit the request.";
+  clearErrorsForFields(["termsAccepted"]);
+  closeTermsModal();
+}
+
 function currentLocalDateString() {
   const now = new Date();
   const year = now.getFullYear();
@@ -394,25 +528,34 @@ function bindLiveValidation() {
   }
 
   LIVE_VALIDATE_FIELDS.forEach((field) => {
-    const node = getFieldInput(field);
+    const inputNode = getFormField(field);
+    const visibleNode = getVisibleField(field);
+    const node = visibleNode || inputNode;
 
-    if (!node) {
+    if (!inputNode) {
       return;
     }
 
-    node.addEventListener("blur", () => validateSingleField(field));
+    if (node) {
+      node.addEventListener("blur", () => validateSingleField(field));
+    }
 
-    if (node.tagName === "SELECT") {
-      node.addEventListener("change", () => validateSingleField(field));
+    if (inputNode.tagName === "SELECT") {
+      inputNode.addEventListener("change", () => validateSingleField(field));
       return;
     }
 
-    if (node.type === "checkbox") {
-      node.addEventListener("change", () => validateSingleField(field));
+    if (inputNode.type === "checkbox") {
+      inputNode.addEventListener("change", () => validateSingleField(field));
       return;
     }
 
-    node.addEventListener("input", () => clearErrorsForFields([field]));
+    if (inputNode.type === "date") {
+      inputNode.addEventListener("change", () => validateSingleField(field));
+      return;
+    }
+
+    node?.addEventListener("input", () => clearErrorsForFields([field]));
   });
 }
 
@@ -441,7 +584,6 @@ function validateSingleField(field) {
 function validatePayload(payload) {
   const errors = {};
   const isMember = payload.memberStatus === "yes";
-  const isFullDay = payload.bookingType === "full_day";
   const endLocationIsOther = payload.endLocationMode === "other";
 
   if (isMember && payload.membershipNumber.length < 3) {
@@ -517,14 +659,6 @@ function validatePayload(payload) {
     errors.endTime = "End time must be later than start time for same-day trips.";
   }
 
-  if (!payload.bookingType) {
-    errors.bookingType = "Choose a booking type.";
-  }
-
-  if (!isFullDay && !payload.timeSlot) {
-    errors.timeSlot = "Choose a half-day slot.";
-  }
-
   if (payload.pickupLocation.length < 2) {
     errors.pickupLocation = "Enter pickup location.";
   }
@@ -547,7 +681,6 @@ function normalizePayload(payload) {
 
   return {
     ...payload,
-    bookingType: String(payload.bookingType || "").trim(),
     destination: String(payload.destination || "").trim(),
     endLocationMode,
     endLocation: endLocationMode === "same_as_setoff" ? pickupLocation : endLocationRaw,
@@ -564,7 +697,6 @@ function normalizePayload(payload) {
     purpose: String(payload.purpose || "").trim(),
     requesterEmail: String(payload.requesterEmail || "").trim(),
     requesterName: String(payload.requesterName || "").trim(),
-    timeSlot: String(payload.timeSlot || "").trim(),
     fromDate: String(payload.fromDate || payload.travelDate || "").trim(),
     toDate: String(payload.toDate || payload.travelDate || "").trim(),
     termsAccepted: String(payload.termsAccepted || "").toLowerCase() === "on",
@@ -574,19 +706,31 @@ function normalizePayload(payload) {
 function focusFirstInvalidField(errors) {
   const order = LIVE_VALIDATE_FIELDS;
   const firstField = order.find((field) => errors[field]);
-  const node = getFieldInput(firstField);
+  const node = getVisibleField(firstField) || getFormField(firstField);
 
   if (node) {
     node.focus();
   }
 }
 
-function getFieldInput(field) {
+function getFormField(field) {
   if (!field || !form) {
     return null;
   }
 
   return form.querySelector(`[name="${field}"]`);
+}
+
+function getVisibleField(field) {
+  if (field === "fromDate") {
+    return fromDateDisplay;
+  }
+
+  if (field === "toDate") {
+    return toDateDisplay;
+  }
+
+  return getFormField(field);
 }
 
 function initHeroCarousel() {
@@ -641,26 +785,103 @@ function initHeroCarousel() {
   resetTimer();
 }
 
-function prefillDatesFromQuery() {
-  if (!fromDateInput || !toDateInput) {
+function prefillBookingWindowFromQuery() {
+  if (!fromDateInput || !toDateInput || !startTimeInput || !endTimeInput) {
     return;
   }
 
   const params = new URLSearchParams(window.location.search);
   const fromDate = String(params.get("fromDate") || "").trim();
+  const startTime = String(params.get("startTime") || "").trim();
   const toDate = String(params.get("toDate") || "").trim();
+  const endTime = String(params.get("endTime") || "").trim();
 
-  if (!fromDate && !toDate) {
+  if (!fromDate && !toDate && !startTime && !endTime) {
     return;
   }
 
   if (fromDate) {
     fromDateInput.value = fromDate;
+    syncCustomDateField(fromDateInput, fromDateDisplay, "Select date");
   }
 
   if (toDate) {
     toDateInput.value = toDate;
+    syncCustomDateField(toDateInput, toDateDisplay, "Select date");
+  }
+
+  if (startTime) {
+    startTimeInput.value = startTime;
+  }
+
+  if (endTime) {
+    endTimeInput.value = endTime;
   }
 
   syncToDateWithFromDate();
+  syncDateAndTimeBounds();
+}
+
+function formatDisplayDate(value) {
+  return new Intl.DateTimeFormat("en-GB", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  }).format(new Date(`${value}T00:00:00`));
+}
+
+function formatDateTimeDisplay(value) {
+  return new Intl.DateTimeFormat("en-GB", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(new Date(value));
+}
+
+function formatDateDisplayOnly(value) {
+  return new Intl.DateTimeFormat("en-GB", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  }).format(new Date(value));
+}
+
+function bindCustomDateField({ input, display, fieldName, emptyLabel }) {
+  if (!input || !display) {
+    return;
+  }
+
+  const openPicker = () => {
+    input.focus();
+
+    if (typeof input.showPicker === "function") {
+      input.showPicker();
+      return;
+    }
+
+    input.click();
+  };
+
+  display.addEventListener("click", openPicker);
+  display.addEventListener("keydown", (event) => {
+    if (event.key === "Enter" || event.key === " " || event.key === "ArrowDown") {
+      event.preventDefault();
+      openPicker();
+    }
+  });
+  input.addEventListener("change", () => {
+    syncCustomDateField(input, display, emptyLabel);
+    clearErrorsForFields([fieldName]);
+  });
+  syncCustomDateField(input, display, emptyLabel);
+}
+
+function syncCustomDateField(input, display, emptyLabel) {
+  if (!input || !display) {
+    return;
+  }
+
+  display.value = input.value ? formatDisplayDate(input.value) : emptyLabel;
 }

@@ -157,14 +157,19 @@ function formatDateRange(fromDate, toDate) {
 }
 
 function formatDate(value) {
-  return new Intl.DateTimeFormat(undefined, {
-    dateStyle: "medium",
+  return new Intl.DateTimeFormat("en-GB", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
   }).format(new Date(`${value}T00:00:00`));
 }
 
 function formatDateTime(value) {
-  return new Intl.DateTimeFormat(undefined, {
-    dateStyle: "medium",
-    timeStyle: "short",
+  return new Intl.DateTimeFormat("en-GB", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
   }).format(new Date(value));
 }
