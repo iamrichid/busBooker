@@ -803,7 +803,7 @@ async function submitModalDecision(decision) {
   requestModalDeclineButton.disabled = true;
 
   try {
-    const response = await fetch(`/api/admin/bookings/decision?id=${encodeURIComponent(booking.id)}`, {
+    const response = await fetch(`/api/admin/bookings?action=decision&id=${encodeURIComponent(booking.id)}`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -881,7 +881,7 @@ async function markBusReturned() {
   cancelReturnButton.disabled = true;
 
   try {
-    const response = await fetch(`/api/admin/bookings/return?id=${encodeURIComponent(booking.id)}`, {
+    const response = await fetch(`/api/admin/bookings?action=return&id=${encodeURIComponent(booking.id)}`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

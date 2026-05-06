@@ -1,5 +1,13 @@
-import { assertFinanceAccess, handleError, json } from "../../src/http.js";
-import { listBookingsForFinance } from "../../src/services.js";
+import {
+  assertFinanceAccess,
+  handleError,
+  json,
+  parseRequestJson,
+} from "../../src/http.js";
+import {
+  confirmBookingPayment,
+  listBookingsForFinance,
+} from "../../src/services.js";
 
 export async function GET(request) {
   try {
@@ -12,6 +20,26 @@ export async function GET(request) {
       },
       result.statusCode,
     );
+  } catch (error) {
+    return handleError(error);
+  }
+}
+
+export async function POST(request) {
+  try {
+    const session = assertFinanceAccess(request.headers);
+    const body = await parseRequestJson(request);
+    const url = new URL(request.url);
+
+    if (url.searchParams.get("action") === "payment") {
+      const result = await confirmBookingPayment(url.searchParams.get("id"), {
+        ...body,
+        financeName: session.financeName,
+      });
+      return json(result.body, result.statusCode);
+    }
+
+    return json({ error: "Unknown finance booking action." }, 404);
   } catch (error) {
     return handleError(error);
   }

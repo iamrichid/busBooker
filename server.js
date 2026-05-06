@@ -124,44 +124,41 @@ const server = createServer(async (request, response) => {
     }
 
     if (pathname === "/api/admin/bookings") {
-      if (request.method !== "GET") {
-        throw new HttpError(405, "Method not allowed.");
+      const session = assertAdminAccess(request.headers);
+
+      if (request.method === "GET") {
+        const result = await listBookingsForAdmin();
+        return sendJson(response, result.statusCode, {
+          ...result.body,
+          adminName: session.adminName,
+        });
       }
 
-      const session = assertAdminAccess(request.headers);
-      const result = await listBookingsForAdmin();
-      return sendJson(response, result.statusCode, {
-        ...result.body,
-        adminName: session.adminName,
-      });
-    }
+      if (request.method === "POST") {
+        const body = await readJsonBody(request);
+        const bookingId = url.searchParams.get("id");
+        const action = url.searchParams.get("action");
 
-    if (pathname === "/api/admin/bookings/decision") {
-      if (request.method !== "POST") {
-        throw new HttpError(405, "Method not allowed.");
+        if (action === "decision") {
+          const result = await processAdminDecision(bookingId, {
+            ...body,
+            adminName: session.adminName,
+          });
+          return sendJson(response, result.statusCode, result.body);
+        }
+
+        if (action === "return") {
+          const result = await markBookingReturned(bookingId, {
+            ...body,
+            adminName: session.adminName,
+          });
+          return sendJson(response, result.statusCode, result.body);
+        }
+
+        throw new HttpError(404, "Unknown admin booking action.");
       }
 
-      const session = assertAdminAccess(request.headers);
-      const body = await readJsonBody(request);
-      const result = await processAdminDecision(url.searchParams.get("id"), {
-        ...body,
-        adminName: session.adminName,
-      });
-      return sendJson(response, result.statusCode, result.body);
-    }
-
-    if (pathname === "/api/admin/bookings/return") {
-      if (request.method !== "POST") {
-        throw new HttpError(405, "Method not allowed.");
-      }
-
-      const session = assertAdminAccess(request.headers);
-      const body = await readJsonBody(request);
-      const result = await markBookingReturned(url.searchParams.get("id"), {
-        ...body,
-        adminName: session.adminName,
-      });
-      return sendJson(response, result.statusCode, result.body);
+      throw new HttpError(405, "Method not allowed.");
     }
 
     if (pathname === "/api/admin/session") {
@@ -313,30 +310,31 @@ const server = createServer(async (request, response) => {
     }
 
     if (pathname === "/api/finance/bookings") {
-      if (request.method !== "GET") {
-        throw new HttpError(405, "Method not allowed.");
+      const session = assertFinanceAccess(request.headers);
+
+      if (request.method === "GET") {
+        const result = await listBookingsForFinance();
+        return sendJson(response, result.statusCode, {
+          ...result.body,
+          financeName: session.financeName,
+        });
       }
 
-      const session = assertFinanceAccess(request.headers);
-      const result = await listBookingsForFinance();
-      return sendJson(response, result.statusCode, {
-        ...result.body,
-        financeName: session.financeName,
-      });
-    }
+      if (request.method === "POST") {
+        const body = await readJsonBody(request);
 
-    if (pathname === "/api/finance/bookings/payment") {
-      if (request.method !== "POST") {
-        throw new HttpError(405, "Method not allowed.");
+        if (url.searchParams.get("action") === "payment") {
+          const result = await confirmBookingPayment(url.searchParams.get("id"), {
+            ...body,
+            financeName: session.financeName,
+          });
+          return sendJson(response, result.statusCode, result.body);
+        }
+
+        throw new HttpError(404, "Unknown finance booking action.");
       }
 
-      const session = assertFinanceAccess(request.headers);
-      const body = await readJsonBody(request);
-      const result = await confirmBookingPayment(url.searchParams.get("id"), {
-        ...body,
-        financeName: session.financeName,
-      });
-      return sendJson(response, result.statusCode, result.body);
+      throw new HttpError(405, "Method not allowed.");
     }
 
     if (staticRoutes.has(pathname)) {

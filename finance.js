@@ -329,7 +329,7 @@ async function submitPaymentConfirmation() {
   financePaymentReferenceError.textContent = "";
 
   try {
-    const response = await fetch(`/api/finance/bookings/payment?id=${encodeURIComponent(booking.id)}`, {
+    const response = await fetch(`/api/finance/bookings?action=payment&id=${encodeURIComponent(booking.id)}`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
