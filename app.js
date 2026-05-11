@@ -27,6 +27,8 @@ const agreeTermsButton = document.querySelector("#agreeTermsButton");
 const termsScrollHint = document.querySelector("#termsScrollHint");
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const GHANA_PHONE_PATTERN = /^0\d{9}$/;
+/** Filled from GET /api/hiring-rates for client-side checks and the rate panel. */
+let hiringRatesCache = null;
 const LIVE_VALIDATE_FIELDS = [
   "memberStatus",
   "membershipNumber",
@@ -44,7 +46,8 @@ const LIVE_VALIDATE_FIELDS = [
   "toDate",
   "endTime",
   "pickupLocation",
-  "destination",
+  "destinationRegionId",
+  "destinationDetail",
   "termsAccepted",
 ];
 
@@ -89,6 +92,7 @@ termsDocumentContent?.addEventListener("scroll", syncTermsModalProgress);
 form?.addEventListener("submit", handleSubmit);
 bindLiveValidation();
 initHeroCarousel();
+void initHiringRates();
 
 if (dialog) {
   dialog.addEventListener("click", (event) => {
@@ -157,6 +161,7 @@ async function handleSubmit(event) {
     syncMembershipState();
     setDateBounds();
     clearErrors();
+    resetHiringRatePanelAfterFormReset();
 
     const notificationNotes = (result.notifications?.results || [])
       .map((entry) => `${entry.channel}: ${entry.status}`)
@@ -663,8 +668,17 @@ function validatePayload(payload) {
     errors.pickupLocation = "Enter pickup location.";
   }
 
-  if (payload.destination.length < 2) {
-    errors.destination = "Enter destination.";
+  if (!payload.destinationRegionId) {
+    errors.destinationRegionId = "Select a destination region.";
+  } else if (
+    hiringRatesCache &&
+    !hiringRatesCache.routes.some((route) => route.id === payload.destinationRegionId)
+  ) {
+    errors.destinationRegionId = "Choose a valid destination region.";
+  }
+
+  if (payload.destinationDetail.length > 500) {
+    errors.destinationDetail = "Venue details must be 500 characters or fewer.";
   }
 
   if (!payload.termsAccepted) {
@@ -681,7 +695,8 @@ function normalizePayload(payload) {
 
   return {
     ...payload,
-    destination: String(payload.destination || "").trim(),
+    destinationRegionId: String(payload.destinationRegionId || "").trim(),
+    destinationDetail: String(payload.destinationDetail || "").trim(),
     endLocationMode,
     endLocation: endLocationMode === "same_as_setoff" ? pickupLocation : endLocationRaw,
     eventName: String(payload.eventName || "").trim(),
@@ -731,6 +746,112 @@ function getVisibleField(field) {
   }
 
   return getFormField(field);
+}
+
+function resetHiringRatePanelAfterFormReset() {
+  const select = document.querySelector("#destinationRegionId");
+  const panel = document.querySelector("#hireRatePanel");
+  if (select) {
+    select.selectedIndex = 0;
+  }
+
+  if (panel) {
+    panel.hidden = true;
+    panel.innerHTML = "";
+  }
+}
+
+function syncHireRatePanel() {
+  const select = document.querySelector("#destinationRegionId");
+  const panel = document.querySelector("#hireRatePanel");
+  if (!select || !panel) {
+    return;
+  }
+
+  const option = select.selectedOptions[0];
+  if (!option || !option.value) {
+    panel.hidden = true;
+    panel.innerHTML = "";
+    return;
+  }
+
+  const rateRaw = option.dataset.rateGhs;
+  const kmRaw = option.dataset.km;
+  const rate = rateRaw ? Number.parseInt(rateRaw, 10) : NaN;
+  const amount = Number.isFinite(rate)
+    ? `GH₵ ${rate.toLocaleString("en-GH")}`
+    : "See transport desk";
+
+  let html = `<p class="hire-rate-amount">Indicative hiring rate (one way from Accra): <strong>${amount}</strong></p>`;
+  html += `<span class="hire-rate-note">Official rate sheet; finance or transport may confirm the final charge.</span>`;
+
+  if (kmRaw) {
+    const km = Number.parseInt(kmRaw, 10);
+    if (Number.isFinite(km)) {
+      html += `<p class="hire-rate-km">Approx. distance on sheet: ${km} km</p>`;
+    }
+  }
+
+  panel.innerHTML = html;
+  panel.hidden = false;
+}
+
+async function initHiringRates() {
+  const select = document.querySelector("#destinationRegionId");
+  if (!select) {
+    return;
+  }
+
+  select.addEventListener("change", syncHireRatePanel);
+
+  try {
+    const response = await fetch("/api/hiring-rates");
+    if (!response.ok) {
+      throw new Error("Bad response");
+    }
+
+    const data = await response.json();
+    hiringRatesCache = data;
+
+    const routes = Array.isArray(data.routes) ? data.routes : [];
+    const byGroup = new Map();
+    for (const route of routes) {
+      const group = route.group || "Destinations";
+      if (!byGroup.has(group)) {
+        byGroup.set(group, []);
+      }
+
+      byGroup.get(group).push(route);
+    }
+
+    select.replaceChildren();
+    const placeholder = document.createElement("option");
+    placeholder.value = "";
+    placeholder.textContent = "Select destination region…";
+    select.append(placeholder);
+
+    for (const [groupName, groupRoutes] of byGroup) {
+      const optgroup = document.createElement("optgroup");
+      optgroup.label = groupName;
+      for (const route of groupRoutes) {
+        const opt = document.createElement("option");
+        opt.value = route.id;
+        opt.dataset.rateGhs = String(route.rateGhs);
+        opt.dataset.km = route.km === null || route.km === undefined ? "" : String(route.km);
+        opt.textContent = route.label;
+        optgroup.append(opt);
+      }
+
+      select.append(optgroup);
+    }
+  } catch {
+    hiringRatesCache = null;
+    select.replaceChildren();
+    const fallback = document.createElement("option");
+    fallback.value = "";
+    fallback.textContent = "Could not load rates — refresh and try again";
+    select.append(fallback);
+  }
 }
 
 function initHeroCarousel() {

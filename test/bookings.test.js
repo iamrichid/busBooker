@@ -10,7 +10,8 @@ import {
 } from "../src/bookings.js";
 
 const validBooking = {
-  destination: "Kasoa prayer center",
+  destinationRegionId: "kasoa",
+  destinationDetail: "Prayer centre",
   endLocation: "Church auditorium",
   endLocationMode: "same_as_setoff",
   endTime: "16:30",
@@ -35,6 +36,25 @@ test("validateBookingRequest accepts a complete future booking", () => {
   const result = validateBookingRequest(validBooking);
   assert.equal(result.ok, true);
   assert.equal(result.value.startTime, "08:30");
+});
+
+test("validateBookingRequest attaches hiring rate from destination region", () => {
+  const result = validateBookingRequest(validBooking);
+  assert.equal(result.ok, true);
+  assert.equal(result.value.hireRateGhs, 1000);
+  assert.equal(result.value.destinationRegionLabel, "Kasoa");
+  assert.match(result.value.destination, /Kasoa/);
+  assert.match(result.value.destination, /Prayer centre/);
+});
+
+test("validateBookingRequest rejects unknown destination region", () => {
+  const result = validateBookingRequest({
+    ...validBooking,
+    destinationRegionId: "unknown-place",
+  });
+
+  assert.equal(result.ok, false);
+  assert.ok(result.errors.destinationRegionId);
 });
 
 test("buildBookingRecord creates a public tracking code", () => {

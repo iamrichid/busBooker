@@ -136,19 +136,39 @@
 
             <div class="full-width request-section">
               <h2>Journey Details</h2>
-              <p>Provide full date, time, and location details.</p>
+              <p>Choose the destination region for indicative hiring rates (bus is based in Accra). Add dates and locations below.</p>
+            </div>
+
+            <div class="full-width hire-region-block">
+              <p class="hire-origin-readout">
+                <span class="hire-origin-label">Origin region</span>
+                <span class="hire-origin-value">Accra (church bus base)</span>
+              </p>
+              <label>
+                <span>Destination region</span>
+                <select id="destinationRegionId" name="destinationRegionId" required>
+                  <option value="">Loading rates…</option>
+                </select>
+                <small data-error-for="destinationRegionId"></small>
+              </label>
+              <div id="hireRatePanel" class="hire-rate-panel" hidden aria-live="polite"></div>
+              <label>
+                <span>Specific venue or landmark (optional)</span>
+                <input
+                  name="destinationDetail"
+                  type="text"
+                  maxlength="500"
+                  placeholder="e.g. prayer centre name, school gate, estate"
+                  autocomplete="off"
+                />
+                <small data-error-for="destinationDetail"></small>
+              </label>
             </div>
 
             <label>
               <span>Purpose</span>
               <textarea name="purpose" rows="3" placeholder="Describe why the bus is needed." required></textarea>
               <small data-error-for="purpose"></small>
-            </label>
-
-            <label>
-              <span>Destination(s)</span>
-              <input name="destination" type="text" placeholder="Kasoa prayer center" required />
-              <small data-error-for="destination"></small>
             </label>
 
             <label>

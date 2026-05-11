@@ -5,6 +5,7 @@ const signInButton = document.querySelector("#signInButton");
 const openSmsCreditsButton = document.querySelector("#openSmsCreditsButton");
 const openContactsButton = document.querySelector("#openContactsButton");
 const openTermsButton = document.querySelector("#openTermsButton");
+const openHiringRatesButton = document.querySelector("#openHiringRatesButton");
 const refreshBookingsButton = document.querySelector("#refreshBookingsButton");
 const logoutButton = document.querySelector("#logoutButton");
 const adminMessage = document.querySelector("#adminMessage");
@@ -33,6 +34,14 @@ const contactsModal = document.querySelector("#contactsModal");
 const closeContactsModalButton = document.querySelector("#closeContactsModalButton");
 const termsModal = document.querySelector("#termsModal");
 const closeTermsModalButton = document.querySelector("#closeTermsModalButton");
+const hiringRatesModal = document.querySelector("#hiringRatesModal");
+const closeHiringRatesModalButton = document.querySelector("#closeHiringRatesModalButton");
+const hiringRatesForm = document.querySelector("#hiringRatesForm");
+const hiringRatesEditBody = document.querySelector("#hiringRatesEditBody");
+const saveHiringRatesButton = document.querySelector("#saveHiringRatesButton");
+const resetHiringRatesButton = document.querySelector("#resetHiringRatesButton");
+const hiringRatesSavedMeta = document.querySelector("#hiringRatesSavedMeta");
+const hiringRatesModalMessage = document.querySelector("#hiringRatesModalMessage");
 
 const requestModal = document.querySelector("#requestModal");
 const requestModalTitle = document.querySelector("#requestModalTitle");
@@ -94,6 +103,7 @@ const state = {
     updatedBy: "",
   },
   smsCredits: null,
+  hiringRates: null,
 };
 
 adminNameInput.value = state.adminName;
@@ -104,6 +114,10 @@ signInForm.addEventListener("submit", handleSignIn);
 openSmsCreditsButton?.addEventListener("click", () => openUtilityModal(smsCreditsModal));
 openContactsButton?.addEventListener("click", () => openUtilityModal(contactsModal));
 openTermsButton?.addEventListener("click", () => openUtilityModal(termsModal));
+openHiringRatesButton?.addEventListener("click", () => {
+  openUtilityModal(hiringRatesModal);
+  void refreshHiringRatesEditor();
+});
 refreshBookingsButton?.addEventListener("click", () => loadBookings());
 logoutButton?.addEventListener("click", logout);
 requestStatusFilter?.addEventListener("change", () => {
@@ -112,9 +126,12 @@ requestStatusFilter?.addEventListener("change", () => {
 });
 notificationSettingsForm?.addEventListener("submit", handleSaveNotificationSettings);
 termsDocumentForm?.addEventListener("submit", handleSaveTermsDocument);
+hiringRatesForm?.addEventListener("submit", handleSaveHiringRates);
+resetHiringRatesButton?.addEventListener("click", handleResetHiringRates);
 closeSmsCreditsModalButton?.addEventListener("click", () => closeUtilityModal(smsCreditsModal));
 closeContactsModalButton?.addEventListener("click", () => closeUtilityModal(contactsModal));
 closeTermsModalButton?.addEventListener("click", () => closeUtilityModal(termsModal));
+closeHiringRatesModalButton?.addEventListener("click", () => closeUtilityModal(hiringRatesModal));
 closeRequestModalButton?.addEventListener("click", closeRequestModal);
 closeReturnConfirmModalButton?.addEventListener("click", closeReturnConfirmModal);
 confirmReturnButton?.addEventListener("click", markBusReturned);
@@ -136,7 +153,7 @@ if (requestModal) {
   });
 }
 
-[smsCreditsModal, contactsModal, termsModal].forEach((modal) => {
+[smsCreditsModal, contactsModal, termsModal, hiringRatesModal].forEach((modal) => {
   modal?.addEventListener("click", (event) => {
     if (event.target === modal) {
       closeUtilityModal(modal);
@@ -164,7 +181,7 @@ document.addEventListener("keydown", (event) => {
   }
 
   if (event.key === "Escape") {
-    [smsCreditsModal, contactsModal, termsModal].forEach((modal) => {
+    [smsCreditsModal, contactsModal, termsModal, hiringRatesModal].forEach((modal) => {
       if (modal?.open) {
         closeUtilityModal(modal);
       }
@@ -428,6 +445,235 @@ async function handleSaveTermsDocument(event) {
   }
 }
 
+function setHiringRatesModalMessage(text, tone = "neutral") {
+  if (!hiringRatesModalMessage) {
+    return;
+  }
+
+  if (!text) {
+    hiringRatesModalMessage.hidden = true;
+    hiringRatesModalMessage.textContent = "";
+    hiringRatesModalMessage.removeAttribute("data-tone");
+    return;
+  }
+
+  hiringRatesModalMessage.hidden = false;
+  hiringRatesModalMessage.textContent = text;
+  hiringRatesModalMessage.dataset.tone = tone === "error" ? "error" : tone === "success" ? "success" : "";
+}
+
+function updateHiringRatesSavedMeta(savedAt, savedBy) {
+  if (!hiringRatesSavedMeta) {
+    return;
+  }
+
+  if (!savedAt && !savedBy) {
+    hiringRatesSavedMeta.textContent = "No custom rates saved yet — defaults from the server are in use.";
+    return;
+  }
+
+  const when = savedAt ? new Date(savedAt).toLocaleString() : "—";
+  hiringRatesSavedMeta.textContent = savedBy
+    ? `Last saved ${when} by ${savedBy}.`
+    : `Last saved ${when}.`;
+}
+
+function renderHiringRatesEditorRows(routes) {
+  if (!hiringRatesEditBody) {
+    return;
+  }
+
+  hiringRatesEditBody.replaceChildren();
+
+  for (const route of routes) {
+    const tr = document.createElement("tr");
+    tr.dataset.routeId = route.id;
+
+    const tdGroup = document.createElement("td");
+    tdGroup.textContent = route.group;
+
+    const tdLabel = document.createElement("td");
+    tdLabel.textContent = route.label;
+
+    const tdKm = document.createElement("td");
+    const inputKm = document.createElement("input");
+    inputKm.type = "number";
+    inputKm.min = "0";
+    inputKm.max = "3000";
+    inputKm.step = "1";
+    inputKm.className = "hire-admin-km";
+    inputKm.value = route.km === null || route.km === undefined ? "" : String(route.km);
+    inputKm.setAttribute("aria-label", `Kilometres for ${route.label}`);
+    tdKm.append(inputKm);
+
+    const tdRate = document.createElement("td");
+    const inputRate = document.createElement("input");
+    inputRate.type = "number";
+    inputRate.min = "1";
+    inputRate.max = "9999999";
+    inputRate.step = "1";
+    inputRate.required = true;
+    inputRate.className = "hire-admin-rate";
+    inputRate.value = String(route.rateGhs);
+    inputRate.setAttribute("aria-label", `GH¢ rate for ${route.label}`);
+    tdRate.append(inputRate);
+
+    tr.append(tdGroup, tdLabel, tdKm, tdRate);
+    hiringRatesEditBody.append(tr);
+  }
+}
+
+function collectHiringRatesFromEditor() {
+  const routes = [];
+
+  hiringRatesEditBody?.querySelectorAll("tr[data-route-id]").forEach((tr) => {
+    const id = tr.dataset.routeId;
+    const kmInput = tr.querySelector(".hire-admin-km");
+    const rateInput = tr.querySelector(".hire-admin-rate");
+    const rateGhs = Number.parseInt(String(rateInput?.value || ""), 10);
+    const kmRaw = String(kmInput?.value || "").trim();
+
+    routes.push({
+      id,
+      rateGhs,
+      km: kmRaw === "" ? null : kmRaw,
+    });
+  });
+
+  return routes;
+}
+
+async function refreshHiringRatesEditor() {
+  if (!state.authenticated || !hiringRatesEditBody) {
+    return;
+  }
+
+  setHiringRatesModalMessage("");
+
+  try {
+    const response = await fetch("/api/admin/hiring-rates");
+    const result = await response.json();
+
+    if (!response.ok) {
+      if (response.status === 401) {
+        await logout({ silent: true });
+        setAdminMessage("Your admin session has expired. Please sign in again.", "error");
+        return;
+      }
+
+      setHiringRatesModalMessage(result.error || "Could not load hiring rates.", "error");
+      return;
+    }
+
+    state.hiringRates = result;
+    renderHiringRatesEditorRows(result.routes || []);
+    updateHiringRatesSavedMeta(result.savedAt, result.savedBy);
+  } catch (error) {
+    setHiringRatesModalMessage(error.message || "The server could not be reached.", "error");
+  }
+}
+
+async function handleSaveHiringRates(event) {
+  event.preventDefault();
+
+  if (!state.authenticated) {
+    return;
+  }
+
+  setHiringRatesModalMessage("");
+  saveHiringRatesButton.disabled = true;
+  setAdminMessage("Saving hiring rates...", "neutral");
+
+  try {
+    const routes = collectHiringRatesFromEditor();
+    const response = await fetch("/api/admin/hiring-rates", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ routes }),
+    });
+    const result = await response.json();
+
+    if (!response.ok) {
+      if (response.status === 401) {
+        await logout({ silent: true });
+        setAdminMessage("Your admin session has expired. Please sign in again.", "error");
+        return;
+      }
+
+      const fieldErrors = result.fields || {};
+      const first = Object.values(fieldErrors).find(Boolean);
+      setHiringRatesModalMessage(first || result.error || "Could not save hiring rates.", "error");
+      setAdminMessage(result.error || "Could not save hiring rates.", "error");
+      return;
+    }
+
+    state.hiringRates = { ...result.hiringRates, savedAt: result.savedAt, savedBy: result.savedBy };
+    renderHiringRatesEditorRows(result.hiringRates?.routes || []);
+    updateHiringRatesSavedMeta(result.savedAt, result.savedBy);
+    setHiringRatesModalMessage(result.message || "Rates saved.", "success");
+    setAdminMessage(result.message || "Hiring rates saved.", "success");
+  } catch (error) {
+    setHiringRatesModalMessage(error.message || "The server could not be reached.", "error");
+    setAdminMessage(error.message || "The server could not be reached.", "error");
+  } finally {
+    saveHiringRatesButton.disabled = false;
+  }
+}
+
+async function handleResetHiringRates() {
+  if (!state.authenticated) {
+    return;
+  }
+
+  if (
+    !window.confirm(
+      "Reset all hiring rates to the built-in defaults from the rate sheet? This saves immediately.",
+    )
+  ) {
+    return;
+  }
+
+  setHiringRatesModalMessage("");
+  resetHiringRatesButton.disabled = true;
+  setAdminMessage("Resetting hiring rates...", "neutral");
+
+  try {
+    const response = await fetch("/api/admin/hiring-rates", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ reset: true }),
+    });
+    const result = await response.json();
+
+    if (!response.ok) {
+      if (response.status === 401) {
+        await logout({ silent: true });
+        setAdminMessage("Your admin session has expired. Please sign in again.", "error");
+        return;
+      }
+
+      setHiringRatesModalMessage(result.error || "Could not reset hiring rates.", "error");
+      setAdminMessage(result.error || "Could not reset hiring rates.", "error");
+      return;
+    }
+
+    state.hiringRates = { ...result.hiringRates, savedAt: result.savedAt, savedBy: result.savedBy };
+    renderHiringRatesEditorRows(result.hiringRates?.routes || []);
+    updateHiringRatesSavedMeta(result.savedAt, result.savedBy);
+    setHiringRatesModalMessage(result.message || "Rates reset.", "success");
+    setAdminMessage(result.message || "Hiring rates reset to defaults.", "success");
+  } catch (error) {
+    setHiringRatesModalMessage(error.message || "The server could not be reached.", "error");
+    setAdminMessage(error.message || "The server could not be reached.", "error");
+  } finally {
+    resetHiringRatesButton.disabled = false;
+  }
+}
+
 async function logout(options = {}) {
   const { silent = false } = options;
 
@@ -456,6 +702,7 @@ async function logout(options = {}) {
     updatedBy: "",
   };
   state.smsCredits = null;
+  state.hiringRates = null;
 
   adminAccessCodeInput.value = "";
   adminNameInput.value = "";
@@ -705,7 +952,13 @@ function closeRequestModal() {
     requestModal.removeAttribute("open");
   }
 
-  if (!returnConfirmModal?.open && !smsCreditsModal?.open && !contactsModal?.open && !termsModal?.open) {
+  if (
+    !returnConfirmModal?.open &&
+    !smsCreditsModal?.open &&
+    !contactsModal?.open &&
+    !termsModal?.open &&
+    !hiringRatesModal?.open
+  ) {
     document.body.classList.remove("dialog-open");
   }
 }
@@ -745,7 +998,14 @@ function closeReturnConfirmModal() {
     returnConfirmModal.removeAttribute("open");
   }
 
-  if (!requestModal?.open && !returnConfirmModal?.open && !smsCreditsModal?.open && !contactsModal?.open && !termsModal?.open) {
+  if (
+    !requestModal?.open &&
+    !returnConfirmModal?.open &&
+    !smsCreditsModal?.open &&
+    !contactsModal?.open &&
+    !termsModal?.open &&
+    !hiringRatesModal?.open
+  ) {
     document.body.classList.remove("dialog-open");
   }
 }
@@ -775,7 +1035,14 @@ function closeUtilityModal(modal) {
     modal.removeAttribute("open");
   }
 
-  if (!requestModal?.open && !returnConfirmModal?.open && !smsCreditsModal?.open && !contactsModal?.open && !termsModal?.open) {
+  if (
+    !requestModal?.open &&
+    !returnConfirmModal?.open &&
+    !smsCreditsModal?.open &&
+    !contactsModal?.open &&
+    !termsModal?.open &&
+    !hiringRatesModal?.open
+  ) {
     document.body.classList.remove("dialog-open");
   }
 }

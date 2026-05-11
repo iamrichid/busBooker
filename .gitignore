@@ -1,6 +1,7 @@
 .env
 .vercel
 data/bookings.json
+data/hiring-rates.json
 data/notifications.log
 
 node_modules/

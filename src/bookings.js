@@ -1,5 +1,7 @@
 import { randomUUID } from "node:crypto";
 
+import { getHiringRouteById, HIRING_ORIGIN } from "./hiring-rates.js";
+
 const VALID_STATUSES = new Set(["pending", "awaiting_payment", "approved", "declined"]);
 
 export function validateBookingRequest(input) {
@@ -11,9 +13,15 @@ export function validateBookingRequest(input) {
   const passengerCount = Number.parseInt(String(input.passengerCount || ""), 10);
   const termsAccepted = normalizeBoolean(input.termsAccepted);
   const organizationName = normalizeText(input.organizationName || input.ministryName);
+  const destinationRegionId = normalizeText(input.destinationRegionId);
+  const destinationDetail = normalizeText(input.destinationDetail);
+  const hiringRoute = getHiringRouteById(destinationRegionId);
+
   const value = {
     address: normalizeText(input.address),
-    destination: normalizeText(input.destination),
+    destination: "",
+    destinationDetail,
+    destinationRegionId,
     endDate: normalizeText(input.toDate || input.travelDate),
     endLocation: endLocationMode === "same_as_setoff" ? pickupLocation : endLocationRaw,
     endLocationMode,
@@ -114,12 +122,25 @@ export function validateBookingRequest(input) {
     errors.endLocation = "Please provide the end location.";
   }
 
-  if (!value.destination) {
-    errors.destination = "Please enter the destination.";
+  if (!hiringRoute) {
+    errors.destinationRegionId = "Please choose a destination region from the hiring rate list.";
+  }
+
+  if (destinationDetail.length > 500) {
+    errors.destinationDetail = "Venue or landmark details must be 500 characters or fewer.";
   }
 
   if (!value.termsAccepted) {
     errors.termsAccepted = "You must accept the transport terms before submitting.";
+  }
+
+  if (hiringRoute) {
+    value.hireOriginLabel = HIRING_ORIGIN.label;
+    value.destinationRegionLabel = hiringRoute.label;
+    value.hireRateGhs = hiringRoute.rateGhs;
+    value.hireDistanceKm = hiringRoute.km === null ? null : hiringRoute.km;
+    value.destination =
+      hiringRoute.label + (destinationDetail ? ` — ${destinationDetail}` : "");
   }
 
   return {

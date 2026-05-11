@@ -13,13 +13,21 @@ import { findVehicleById, getAvailableVehicles, getFleet, getVehicleDisplay } fr
 import { HttpError } from "./http.js";
 import {
   readBookings,
+  readHiringRatesDocument,
   readNotificationSettings,
   readSmsCreditStatus,
   readTermsDocument,
   saveBooking,
+  saveHiringRatesDocument,
   saveNotificationSettings,
   saveTermsDocument,
 } from "./storage.js";
+import {
+  applyHiringRatesSnapshot,
+  DEFAULT_HIRING_ROUTES,
+  listHiringRatesForApi,
+  mergeHiringRatesSubmission,
+} from "./hiring-rates.js";
 
 export async function submitBookingRequest(input) {
   const validation = validateBookingRequest(input);
@@ -163,6 +171,58 @@ export async function updateTermsDocumentForAdmin(input) {
     body: {
       message: "Terms and conditions saved successfully.",
       terms,
+    },
+    statusCode: 200,
+  };
+}
+
+export async function getHiringRatesForAdmin() {
+  const doc = await readHiringRatesDocument();
+
+  return {
+    body: {
+      ...listHiringRatesForApi(),
+      savedAt: doc?.updatedAt || "",
+      savedBy: doc?.updatedBy || "",
+    },
+    statusCode: 200,
+  };
+}
+
+export async function updateHiringRatesForAdmin(input) {
+  const updatedBy = String(input?.updatedBy || "").trim();
+  const reset = Boolean(input?.reset);
+
+  let routes;
+  if (reset) {
+    routes = JSON.parse(JSON.stringify(DEFAULT_HIRING_ROUTES));
+  } else {
+    const merged = mergeHiringRatesSubmission(input?.routes);
+    if (!merged.ok) {
+      throw new HttpError(400, "Please correct the highlighted hiring rate fields.", {
+        fields: merged.errors,
+      });
+    }
+
+    routes = merged.routes;
+  }
+
+  const saved = await saveHiringRatesDocument({
+    routes,
+    updatedAt: new Date().toISOString(),
+    updatedBy: reset ? `${updatedBy} (reset to defaults)` : updatedBy,
+  });
+
+  applyHiringRatesSnapshot(saved.routes);
+
+  return {
+    body: {
+      message: reset
+        ? "Hiring rates were reset to the built-in defaults and saved."
+        : "Hiring rates saved successfully.",
+      hiringRates: listHiringRatesForApi(),
+      savedAt: saved.updatedAt,
+      savedBy: saved.updatedBy,
     },
     statusCode: 200,
   };

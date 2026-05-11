@@ -32,11 +32,15 @@ import {
   submitBookingRequest,
   updateNotificationSettingsForAdmin,
   updateTermsDocumentForAdmin,
+  getHiringRatesForAdmin,
+  updateHiringRatesForAdmin,
 } from "./src/services.js";
 import { ensureDataFiles } from "./src/storage.js";
+import { listHiringRatesForApi, loadHiringRatesAtStartup } from "./src/hiring-rates.js";
 
 loadEnvFile();
 await ensureDataFiles();
+await loadHiringRatesAtStartup();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -112,6 +116,14 @@ const server = createServer(async (request, response) => {
 
       const result = await listAvailability();
       return sendJson(response, result.statusCode, result.body);
+    }
+
+    if (pathname === "/api/hiring-rates") {
+      if (request.method !== "GET") {
+        throw new HttpError(405, "Method not allowed.");
+      }
+
+      return sendJson(response, 200, listHiringRatesForApi());
     }
 
     if (pathname === "/api/tracking") {
@@ -243,6 +255,32 @@ const server = createServer(async (request, response) => {
       if (request.method === "POST") {
         const body = await readJsonBody(request);
         const result = await updateTermsDocumentForAdmin({
+          ...body,
+          updatedBy: session.adminName,
+        });
+        return sendJson(response, result.statusCode, {
+          ...result.body,
+          adminName: session.adminName,
+        });
+      }
+
+      throw new HttpError(405, "Method not allowed.");
+    }
+
+    if (pathname === "/api/admin/hiring-rates") {
+      const session = assertAdminAccess(request.headers);
+
+      if (request.method === "GET") {
+        const result = await getHiringRatesForAdmin();
+        return sendJson(response, result.statusCode, {
+          ...result.body,
+          adminName: session.adminName,
+        });
+      }
+
+      if (request.method === "POST") {
+        const body = await readJsonBody(request);
+        const result = await updateHiringRatesForAdmin({
           ...body,
           updatedBy: session.adminName,
         });

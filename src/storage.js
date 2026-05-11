@@ -9,11 +9,13 @@ const notificationsFile = path.join(dataDir, "notifications.log");
 const notificationSettingsFile = path.join(dataDir, "notification-settings.json");
 const smsCreditStatusFile = path.join(dataDir, "sms-credit-status.json");
 const termsDocumentFile = path.join(dataDir, "terms-document.json");
+const hiringRatesFile = path.join(dataDir, "hiring-rates.json");
 const bookingBlobPrefix = "bus-booker/bookings/";
 const notificationBlobPrefix = "bus-booker/notifications/";
 const notificationSettingsBlobPath = "bus-booker/settings/notification-settings.json";
 const smsCreditStatusBlobPath = "bus-booker/settings/sms-credit-status.json";
 const termsDocumentBlobPath = "bus-booker/settings/terms-document.json";
+const hiringRatesBlobPath = "bus-booker/settings/hiring-rates.json";
 
 export async function ensureDataFiles() {
   if (usesBlobStorage()) {
@@ -208,6 +210,53 @@ export async function saveTermsDocument(document) {
   await ensureDataFiles();
   await writeFile(termsDocumentFile, `${JSON.stringify(normalized, null, 2)}\n`, "utf8");
   return normalized;
+}
+
+export async function readHiringRatesDocument() {
+  if (usesBlobStorage()) {
+    return readBlobJson(hiringRatesBlobPath);
+  }
+
+  assertWritableLocalStorage();
+
+  try {
+    const raw = await readFile(hiringRatesFile, "utf8");
+    return JSON.parse(raw);
+  } catch (error) {
+    if (error.code === "ENOENT") {
+      return null;
+    }
+
+    throw error;
+  }
+}
+
+export async function saveHiringRatesDocument(document) {
+  const safe = document && typeof document === "object" ? document : {};
+  const payload = {
+    routes: Array.isArray(safe.routes) ? safe.routes : [],
+    updatedAt: String(safe.updatedAt || "").trim(),
+    updatedBy: String(safe.updatedBy || "").trim(),
+  };
+
+  if (usesBlobStorage()) {
+    const { put } = await loadBlobSdk();
+    await put(
+      hiringRatesBlobPath,
+      `${JSON.stringify(payload, null, 2)}\n`,
+      {
+        access: "private",
+        addRandomSuffix: false,
+        contentType: "application/json",
+      },
+    );
+    return payload;
+  }
+
+  assertWritableLocalStorage();
+  await ensureDataFiles();
+  await writeFile(hiringRatesFile, `${JSON.stringify(payload, null, 2)}\n`, "utf8");
+  return payload;
 }
 
 export function usesBlobStorage() {

@@ -59,6 +59,7 @@
                 <button id="openSmsCreditsButton" class="ghost-button" type="button">SMS Credits</button>
                 <button id="openContactsButton" class="ghost-button" type="button">Phone Numbers</button>
                 <button id="openTermsButton" class="ghost-button" type="button">Terms</button>
+                <button id="openHiringRatesButton" class="ghost-button" type="button">Hiring rates</button>
                 <button id="refreshBookingsButton" class="ghost-button" type="button">Refresh</button>
                 <button id="logoutButton" class="ghost-button" type="button">Log Out</button>
               </div>
@@ -191,6 +192,50 @@
 
           <div class="workspace-actions">
             <button id="saveNotificationSettingsButton" class="primary-button" type="submit">Save contacts</button>
+          </div>
+        </form>
+      </div>
+    </dialog>
+
+    <dialog id="hiringRatesModal" class="booking-dialog request-modal" aria-labelledby="hiringRatesModalTitle">
+      <div class="dialog-shell request-modal-shell admin-utility-modal-shell admin-hiring-modal-shell">
+        <div class="dialog-head">
+          <div>
+            <p class="eyebrow">Pricing</p>
+            <h2 id="hiringRatesModalTitle" class="font-display text-3xl leading-tight text-slate-900">
+              Bus hiring rates
+            </h2>
+            <p class="panel-copy">
+              Indicative GH¢ rates for the public request form (Accra base). Only amounts and distances are editable;
+              regions stay aligned with the official table.
+            </p>
+            <p id="hiringRatesSavedMeta" class="hiring-rates-saved-meta panel-copy"></p>
+          </div>
+          <button id="closeHiringRatesModalButton" class="icon-button" type="button" aria-label="Close hiring rates">
+            ×
+          </button>
+        </div>
+
+        <div id="hiringRatesModalMessage" class="form-message" aria-live="polite" hidden></div>
+
+        <form id="hiringRatesForm" class="admin-hiring-form">
+          <div class="admin-hiring-table-wrap">
+            <table class="admin-hiring-rates-table">
+              <thead>
+                <tr>
+                  <th scope="col">Region</th>
+                  <th scope="col">Destination</th>
+                  <th scope="col">Km (optional)</th>
+                  <th scope="col">GH¢</th>
+                </tr>
+              </thead>
+              <tbody id="hiringRatesEditBody"></tbody>
+            </table>
+          </div>
+
+          <div class="workspace-actions hiring-rates-modal-actions">
+            <button id="resetHiringRatesButton" type="button" class="ghost-button">Reset to defaults</button>
+            <button id="saveHiringRatesButton" type="submit" class="primary-button">Save rates</button>
           </div>
         </form>
       </div>

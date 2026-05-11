@@ -802,6 +802,132 @@ textarea {
   font-size: 0.87rem;
 }
 
+.hire-region-block {
+  display: grid;
+  gap: 0.75rem;
+  margin-bottom: 0.2rem;
+}
+
+.hire-origin-readout {
+  margin: 0;
+  display: grid;
+  gap: 0.2rem;
+  padding: 0.65rem 0.75rem;
+  border-radius: var(--surface-radius);
+  border: 1px solid var(--border);
+  background: var(--panel-soft);
+}
+
+.hire-origin-label {
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--navy-soft);
+}
+
+.hire-origin-value {
+  font-weight: 700;
+  color: var(--navy);
+  font-size: 1rem;
+}
+
+.hire-rate-panel {
+  padding: 0.75rem 0.85rem;
+  border-radius: var(--surface-radius);
+  border: 1px solid rgba(200, 166, 79, 0.35);
+  background: var(--gold-soft);
+  color: #5f4308;
+}
+
+.hire-rate-panel[hidden] {
+  display: none !important;
+}
+
+.hire-rate-amount {
+  margin: 0;
+  font-size: 0.95rem;
+  line-height: 1.45;
+}
+
+.hire-rate-amount strong {
+  font-size: 1.12rem;
+  color: var(--navy);
+}
+
+.hire-rate-note {
+  display: block;
+  margin-top: 0.35rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #7a5a0b;
+}
+
+.hire-rate-km {
+  margin: 0.45rem 0 0;
+  font-size: 0.88rem;
+  color: #6e4b00;
+}
+
+.admin-hiring-modal-shell .dialog-head {
+  align-items: flex-start;
+}
+
+.admin-hiring-table-wrap {
+  max-height: min(60vh, 520px);
+  overflow: auto;
+  margin: 0.5rem 0 1rem;
+  border: 1px solid var(--border);
+  border-radius: var(--surface-radius);
+  background: var(--panel);
+}
+
+.admin-hiring-rates-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.88rem;
+}
+
+.admin-hiring-rates-table th,
+.admin-hiring-rates-table td {
+  padding: 0.45rem 0.55rem;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  vertical-align: middle;
+}
+
+.admin-hiring-rates-table th {
+  position: sticky;
+  top: 0;
+  background: var(--panel);
+  z-index: 1;
+  font-weight: 750;
+  color: var(--navy-soft);
+}
+
+.admin-hiring-rates-table tbody tr:nth-child(even) {
+  background: rgba(18, 59, 116, 0.03);
+}
+
+.hire-admin-km,
+.hire-admin-rate {
+  width: 100%;
+  min-width: 4.5rem;
+  max-width: 9rem;
+  min-height: 42px;
+  padding: 0.45rem 0.55rem;
+}
+
+.hiring-rates-saved-meta {
+  margin-top: 0.35rem;
+  font-size: 0.86rem !important;
+  color: var(--muted);
+}
+
+.hiring-rates-modal-actions {
+  margin-top: 0.25rem;
+}
+
 .terms-entry-panel {
   padding: 1rem;
   border: 1px solid var(--border);
