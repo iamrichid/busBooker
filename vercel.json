@@ -1,3 +1,13 @@
 {
-  "cleanUrls": true
+  "cleanUrls": true,
+  "rewrites": [
+    {
+      "source": "/api/health",
+      "destination": "/api/terms?__health=1"
+    },
+    {
+      "source": "/api/hiring-rates",
+      "destination": "/api/availability?__hiring=1"
+    }
+  ]
 }
