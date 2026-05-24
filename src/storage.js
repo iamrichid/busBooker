@@ -130,6 +130,7 @@ export async function saveNotificationSettings(settings) {
       {
         access: "private",
         addRandomSuffix: false,
+        allowOverwrite: true,
         contentType: "application/json",
       },
     );
@@ -165,6 +166,7 @@ export async function saveSmsCreditStatus(status) {
       {
         access: "private",
         addRandomSuffix: false,
+        allowOverwrite: true,
         contentType: "application/json",
       },
     );
@@ -200,6 +202,7 @@ export async function saveTermsDocument(document) {
       {
         access: "private",
         addRandomSuffix: false,
+        allowOverwrite: true,
         contentType: "application/json",
       },
     );
@@ -247,6 +250,7 @@ export async function saveHiringRatesDocument(document) {
       {
         access: "private",
         addRandomSuffix: false,
+        allowOverwrite: true,
         contentType: "application/json",
       },
     );
