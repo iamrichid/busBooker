@@ -194,11 +194,13 @@ export function sanitizeDecisionInput(input) {
 }
 
 export function buildBookingRecord(value) {
+  const quotedAmount = Number.isFinite(value.hireRateGhs) ? value.hireRateGhs : 0;
+
   return {
     ...value,
-    amountCharged: 0,
+    amountCharged: quotedAmount,
     amountPaid: 0,
-    balance: 0,
+    balance: quotedAmount,
     driverName: "",
     driverPhone: "",
     id: randomUUID(),

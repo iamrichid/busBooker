@@ -117,7 +117,7 @@ function renderTracking(booking) {
   trackingStatusBadge.dataset.status = booking.status;
   trackingEventName.textContent = booking.eventName || "Bus request";
   trackingDateRange.textContent = formatDateRange(booking.fromDate, booking.toDate);
-  trackingPayment.textContent = getPaymentLabel(booking.paymentStatus);
+  trackingPayment.textContent = getPaymentSummary(booking);
   trackingSubmittedAt.textContent = booking.submittedAt
     ? `Received on ${formatDateTime(booking.submittedAt)}.`
     : "Request received.";
@@ -165,7 +165,7 @@ function renderTracking(booking) {
   trackingPaymentReferenceError.textContent = "";
 
   if (canSubmitPayment) {
-    trackingPaymentHelp.textContent = `Pay to MoMo ${formatPhoneNumber(booking.paymentInstructionsNumber)} (${booking.paymentInstructionsName}) and paste the transaction ID here for finance verification.`;
+    trackingPaymentHelp.textContent = `Pay GH₵ ${formatMoney(booking.balance || booking.amountCharged || 0)} to MoMo ${formatPhoneNumber(booking.paymentInstructionsNumber)} (${booking.paymentInstructionsName}) and paste the transaction ID here for finance verification.`;
     trackingPaymentSubmitButton.textContent = booking.paymentStatus === "submitted" ? "Update transaction ID" : "Submit transaction ID";
   }
 
@@ -199,6 +199,16 @@ function getPaymentLabel(status) {
   }
 
   return "Pending";
+}
+
+function getPaymentSummary(booking) {
+  const amount = booking.balance || booking.amountCharged || 0;
+
+  if (booking.paymentStatus === "confirmed") {
+    return `Confirmed • GH₵ ${formatMoney(booking.amountPaid || booking.amountCharged || 0)}`;
+  }
+
+  return `${getPaymentLabel(booking.paymentStatus)} • GH₵ ${formatMoney(amount)}`;
 }
 
 function setMessage(message, tone) {
@@ -255,4 +265,9 @@ function formatPhoneNumber(value) {
   }
 
   return String(value || "");
+}
+
+function formatMoney(value) {
+  const amount = Number.isFinite(Number(value)) ? Number(value) : 0;
+  return amount.toFixed(2);
 }

@@ -618,6 +618,8 @@ function getDecisionMessage(status) {
 function toTrackingView(booking) {
   return {
     adminNotes: booking.adminNotes || "",
+    amountCharged: booking.amountCharged || 0,
+    amountPaid: booking.amountPaid || 0,
     assignedVehicleLabel: booking.assignedVehicleLabel || "",
     balance: booking.balance || 0,
     destination: booking.destination,

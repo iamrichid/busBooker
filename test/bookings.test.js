@@ -64,6 +64,15 @@ test("buildBookingRecord creates a public tracking code", () => {
   assert.match(record.trackingCode, /^BUS-[A-F0-9]{8}$/);
 });
 
+test("buildBookingRecord carries the quoted hiring amount into payment fields", () => {
+  const result = validateBookingRequest(validBooking);
+  const record = buildBookingRecord(result.value);
+
+  assert.equal(record.amountCharged, result.value.hireRateGhs);
+  assert.equal(record.balance, result.value.hireRateGhs);
+  assert.equal(record.amountPaid, 0);
+});
+
 test("validateBookingRequest requires email address", () => {
   const result = validateBookingRequest({
     ...validBooking,
