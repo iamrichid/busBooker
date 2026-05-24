@@ -424,9 +424,14 @@ function normalizeShortText(value, fallback = "") {
 }
 
 function getDefaultNotificationSettings() {
+  const defaultAdminPhones = ["0262247767", "0242638289"];
+  const defaultFinancePhones = ["+233243612760"];
+  const envAdminPhones = readEnvPhoneList(process.env.ADMIN_NOTIFICATION_PHONES);
+  const envFinancePhones = readEnvPhoneList(process.env.FINANCE_NOTIFICATION_PHONES);
+
   return {
-    adminPhones: readEnvPhoneList(process.env.ADMIN_NOTIFICATION_PHONES),
-    financePhones: readEnvPhoneList(process.env.FINANCE_NOTIFICATION_PHONES),
+    adminPhones: envAdminPhones.length > 0 ? envAdminPhones : defaultAdminPhones,
+    financePhones: envFinancePhones.length > 0 ? envFinancePhones : defaultFinancePhones,
   };
 }
 
@@ -453,6 +458,10 @@ function getDefaultTermsDocument() {
       "3. Approved trips must follow the agreed departure and return times unless the transport desk grants a change.",
       "4. The bus must be used only for the stated church or authorised event.",
       "5. Any loss, damage, or late return must be reported to the transport desk immediately.",
+      "Additional terms:",
+      "- Price quoted is per day between 5am and 8pm. Price depends on the destination from pickup point.",
+      "- Renter is responsible for fuel. Trip starts with a full tank; renter buys top ups as and when necessary and fills up the tank upon completion of trip.",
+      "- Fuel cost and driver allowance could be added to the rental charge if renter so wish.",
     ].join("\n\n"),
     fileName: "default-terms.txt",
     updatedAt: "",

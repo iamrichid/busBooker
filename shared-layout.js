@@ -34,12 +34,13 @@ class PcgSiteFooter extends HTMLElement {
             <div class="site-footer-contact-list">
               <p class="site-footer-contact-row">
                 <span>Church office</span>
-                <a href="tel:+233302555210">+233 30 255 5210</a>
+                <a href="tel:+233262247767">026 224 7767</a>
+                <a href="tel:+233242638289">024 263 8289</a>
                 <a href="mailto:office.adentapresby@gmail.com">office.adentapresby@gmail.com</a>
               </p>
               <p class="site-footer-contact-row">
                 <span>Transport desk</span>
-                <a href="tel:+233244678901">+233 24 467 8901</a>
+                <a href="tel:+233243612760">+233 24 361 2760</a>
                 <a href="mailto:adentapresby@gmail.com">adentapresby@gmail.com</a>
               </p>
             </div>
