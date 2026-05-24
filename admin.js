@@ -884,10 +884,15 @@ function openRequestModal(bookingId, options = {}) {
     ["Amount paid", formatMoney(booking.amountPaid)],
     ["Balance", formatMoney(booking.balance)],
     ["Payment status", booking.paymentStatus || "pending"],
+    ["Transaction ID", booking.paymentReference || "Not submitted yet"],
     ["Tracking code", booking.trackingCode || "Not available"],
     ["Submitted", formatDateTime(booking.submittedAt)],
     ["Status", getStatusLabel(booking)],
   ];
+
+  if (booking.paymentSubmittedAt) {
+    detailPairs.push(["Payment submitted", formatDateTime(booking.paymentSubmittedAt)]);
+  }
 
   if (booking.assignedVehicleLabel) {
     detailPairs.push(["Assigned bus", booking.assignedVehicleLabel]);

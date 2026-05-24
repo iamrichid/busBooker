@@ -1,4 +1,5 @@
 import { appendNotificationLog, readNotificationSettings, saveSmsCreditStatus } from "./storage.js";
+import { PAYMENT_MOMO_NAME, PAYMENT_MOMO_NUMBER } from "./payment.js";
 
 const resendEndpoint = "https://api.resend.com/emails";
 const cSmsEndpoint = "https://app.mycsms.com/api/v3/sms/send";
@@ -52,6 +53,9 @@ export async function notifyBookingDecision(booking) {
   const requesterMessage = [
     `Bus request ${decisionText} for ${dateLabel}.`,
     `Event: ${booking.eventName}`,
+    booking.status === "awaiting_payment" ? `Pay to MoMo: ${PAYMENT_MOMO_NUMBER}` : null,
+    booking.status === "awaiting_payment" ? `MoMo name: ${PAYMENT_MOMO_NAME}` : null,
+    booking.status === "awaiting_payment" ? "After payment, open your tracking link and submit the transaction ID." : null,
     trackingUrl ? `Track: ${trackingUrl}` : null,
   ].filter(Boolean).join("\n");
 

@@ -206,6 +206,7 @@ export function buildBookingRecord(value) {
     paymentConfirmedBy: "",
     paymentNotes: "",
     paymentReference: "",
+    paymentSubmittedAt: "",
     paymentStatus: "pending",
     returnedAt: "",
     returnedBy: "",

@@ -268,6 +268,8 @@ function openPaymentModal(bookingId, options = {}) {
     ["Requester", booking.requesterName || "Unknown"],
     ["Status", getStatusLabel(booking.status || "pending")],
     ["Payment status", getPaymentLabel(booking.paymentStatus)],
+    ["Transaction ID", booking.paymentReference || "Not submitted yet"],
+    ["Submitted by requester", booking.paymentSubmittedAt ? formatDateTime(booking.paymentSubmittedAt) : "Not submitted yet"],
     ["Tracking code", booking.trackingCode || "Not available"],
     ["Trip window", formatSlot(booking)],
   ];
@@ -484,6 +486,10 @@ function getStatusLabel(status) {
 function getPaymentLabel(status) {
   if (status === "confirmed") {
     return "Confirmed";
+  }
+
+  if (status === "submitted") {
+    return "Submitted by requester";
   }
 
   return "Pending";

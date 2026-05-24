@@ -7,11 +7,18 @@ const trackingStatusBadge = document.querySelector("#trackingStatusBadge");
 const trackingEventName = document.querySelector("#trackingEventName");
 const trackingDateRange = document.querySelector("#trackingDateRange");
 const trackingPayment = document.querySelector("#trackingPayment");
+const trackingPaymentForm = document.querySelector("#trackingPaymentForm");
+const trackingPaymentHelp = document.querySelector("#trackingPaymentHelp");
+const trackingPaymentPanel = document.querySelector("#trackingPaymentPanel");
+const trackingPaymentReferenceError = document.querySelector("#trackingPaymentReferenceError");
+const trackingPaymentReferenceInput = document.querySelector("#trackingPaymentReferenceInput");
+const trackingPaymentSubmitButton = document.querySelector("#trackingPaymentSubmitButton");
 const trackingApprovalText = document.querySelector("#trackingApprovalText");
 const trackingSubmittedAt = document.querySelector("#trackingSubmittedAt");
 const trackingPaymentText = document.querySelector("#trackingPaymentText");
 const trackingDecisionText = document.querySelector("#trackingDecisionText");
 const trackingAdminNote = document.querySelector("#trackingAdminNote");
+let currentBooking = null;
 
 const stepNodes = {
   approval: document.querySelector("#trackingStepApproval"),
@@ -42,6 +49,46 @@ trackingForm?.addEventListener("submit", (event) => {
   loadTracking(code);
 });
 
+trackingPaymentForm?.addEventListener("submit", async (event) => {
+  event.preventDefault();
+
+  if (!currentBooking?.trackingCode) {
+    return;
+  }
+
+  trackingPaymentReferenceError.textContent = "";
+  trackingPaymentSubmitButton.disabled = true;
+
+  try {
+    const response = await fetch(`/api/tracking?code=${encodeURIComponent(currentBooking.trackingCode)}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        paymentReference: trackingPaymentReferenceInput.value,
+      }),
+    });
+    const result = await response.json();
+
+    if (!response.ok) {
+      if (result.fields?.paymentReference) {
+        trackingPaymentReferenceError.textContent = result.fields.paymentReference;
+      }
+      setMessage(result.error || "Could not submit the transaction ID.", "error");
+      return;
+    }
+
+    currentBooking = result.booking;
+    renderTracking(result.booking);
+    setMessage(result.message || "Transaction ID submitted.", "success");
+  } catch (error) {
+    setMessage(error.message || "The server could not be reached.", "error");
+  } finally {
+    trackingPaymentSubmitButton.disabled = false;
+  }
+});
+
 async function loadTracking(code) {
   setMessage("Checking request status...", "neutral");
   trackingResult.hidden = true;
@@ -63,13 +110,14 @@ async function loadTracking(code) {
 }
 
 function renderTracking(booking) {
+  currentBooking = booking;
   trackingResult.hidden = false;
   trackingCodeTitle.textContent = booking.trackingCode;
   trackingStatusBadge.textContent = getStatusLabel(booking.status);
   trackingStatusBadge.dataset.status = booking.status;
   trackingEventName.textContent = booking.eventName || "Bus request";
   trackingDateRange.textContent = formatDateRange(booking.fromDate, booking.toDate);
-  trackingPayment.textContent = booking.paymentStatus === "confirmed" ? "Confirmed" : "Pending";
+  trackingPayment.textContent = getPaymentLabel(booking.paymentStatus);
   trackingSubmittedAt.textContent = booking.submittedAt
     ? `Received on ${formatDateTime(booking.submittedAt)}.`
     : "Request received.";
@@ -87,6 +135,8 @@ function renderTracking(booking) {
 
   trackingPaymentText.textContent = paymentConfirmed
     ? `Payment confirmed${booking.paymentConfirmedAt ? ` on ${formatDateTime(booking.paymentConfirmedAt)}` : ""}.`
+    : booking.paymentStatus === "submitted"
+      ? `Transaction ID submitted${booking.paymentSubmittedAt ? ` on ${formatDateTime(booking.paymentSubmittedAt)}` : ""}. Finance is reviewing it now.`
     : approvedToPay && booking.status !== "declined"
       ? "Waiting for finance to confirm payment."
       : "Payment opens after admin approves the request to pay.";
@@ -108,6 +158,17 @@ function renderTracking(booking) {
   setStepState(stepNodes.paid, paymentConfirmed);
   setStepState(stepNodes.release, released);
 
+  const canSubmitPayment = booking.status === "awaiting_payment" && booking.paymentStatus !== "confirmed";
+  trackingPaymentPanel.hidden = !canSubmitPayment;
+  trackingPaymentReferenceInput.value = booking.paymentReference || "";
+  trackingPaymentReferenceInput.disabled = !canSubmitPayment;
+  trackingPaymentReferenceError.textContent = "";
+
+  if (canSubmitPayment) {
+    trackingPaymentHelp.textContent = `Pay to MoMo ${formatPhoneNumber(booking.paymentInstructionsNumber)} (${booking.paymentInstructionsName}) and paste the transaction ID here for finance verification.`;
+    trackingPaymentSubmitButton.textContent = booking.paymentStatus === "submitted" ? "Update transaction ID" : "Submit transaction ID";
+  }
+
   trackingAdminNote.hidden = !booking.adminNotes;
   trackingAdminNote.textContent = booking.adminNotes ? `Admin note: ${booking.adminNotes}` : "";
 }
@@ -126,6 +187,18 @@ function getStatusLabel(status) {
 
 function setStepState(node, isComplete) {
   node.dataset.complete = String(isComplete);
+}
+
+function getPaymentLabel(status) {
+  if (status === "confirmed") {
+    return "Confirmed";
+  }
+
+  if (status === "submitted") {
+    return "Submitted for review";
+  }
+
+  return "Pending";
 }
 
 function setMessage(message, tone) {
@@ -172,4 +245,14 @@ function formatDateTime(value) {
     hour: "numeric",
     minute: "2-digit",
   }).format(new Date(value));
+}
+
+function formatPhoneNumber(value) {
+  const digits = String(value || "").replace(/\D/g, "");
+
+  if (digits.length === 10 && digits.startsWith("0")) {
+    return `${digits.slice(0, 4)} ${digits.slice(4, 7)} ${digits.slice(7)}`;
+  }
+
+  return String(value || "");
 }

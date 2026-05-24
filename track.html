@@ -70,6 +70,23 @@
             </div>
           </div>
 
+          <section id="trackingPaymentPanel" class="request-modal-card" hidden>
+            <div class="terms-document-head">
+              <h3>Payment instructions</h3>
+              <p id="trackingPaymentHelp" class="terms-document-meta"></p>
+            </div>
+            <form id="trackingPaymentForm" class="auth-form">
+              <label>
+                <span>MoMo transaction ID</span>
+                <input id="trackingPaymentReferenceInput" type="text" placeholder="Paste transaction ID" autocomplete="off" />
+                <small id="trackingPaymentReferenceError"></small>
+              </label>
+              <div class="decision-actions">
+                <button id="trackingPaymentSubmitButton" class="primary-button" type="submit">Submit transaction ID</button>
+              </div>
+            </form>
+          </section>
+
           <ol class="tracking-steps" aria-label="Request progress">
             <li id="trackingStepSubmitted">
               <span></span>

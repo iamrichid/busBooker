@@ -26,6 +26,7 @@ import {
   getTermsDocument,
   getTermsDocumentForAdmin,
   getBookingTracking,
+  submitBookingPaymentReference,
   confirmBookingPayment,
   markBookingReturned,
   processAdminDecision,
@@ -127,12 +128,18 @@ const server = createServer(async (request, response) => {
     }
 
     if (pathname === "/api/tracking") {
-      if (request.method !== "GET") {
-        throw new HttpError(405, "Method not allowed.");
+      if (request.method === "GET") {
+        const result = await getBookingTracking(url.searchParams.get("code"));
+        return sendJson(response, result.statusCode, result.body);
       }
 
-      const result = await getBookingTracking(url.searchParams.get("code"));
-      return sendJson(response, result.statusCode, result.body);
+      if (request.method === "POST") {
+        const body = await readJsonBody(request);
+        const result = await submitBookingPaymentReference(url.searchParams.get("code"), body);
+        return sendJson(response, result.statusCode, result.body);
+      }
+
+      throw new HttpError(405, "Method not allowed.");
     }
 
     if (pathname === "/api/admin/bookings") {

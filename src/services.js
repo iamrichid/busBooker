@@ -28,6 +28,7 @@ import {
   listHiringRatesForApi,
   mergeHiringRatesSubmission,
 } from "./hiring-rates.js";
+import { PAYMENT_MOMO_NAME, PAYMENT_MOMO_NUMBER } from "./payment.js";
 
 export async function submitBookingRequest(input) {
   const validation = validateBookingRequest(input);
@@ -74,6 +75,55 @@ export async function getBookingTracking(code) {
   return {
     body: {
       booking: toTrackingView(booking),
+    },
+    statusCode: 200,
+  };
+}
+
+export async function submitBookingPaymentReference(code, input) {
+  const trackingCode = String(code || "").trim().toUpperCase();
+  const paymentReference = String(input.paymentReference || "").trim();
+
+  if (!trackingCode) {
+    throw new HttpError(400, "Tracking code is required.");
+  }
+
+  if (!paymentReference) {
+    throw new HttpError(400, "Transaction ID is required.", {
+      fields: {
+        paymentReference: "Enter the MoMo transaction ID after payment.",
+      },
+    });
+  }
+
+  const bookings = await readBookings();
+  const current = bookings.find((item) => String(item.trackingCode || "").toUpperCase() === trackingCode);
+
+  if (!current) {
+    throw new HttpError(404, "No request was found for that tracking code.");
+  }
+
+  if (current.status !== "awaiting_payment") {
+    throw new HttpError(409, "Transaction IDs can only be submitted after admin approves the request to pay.");
+  }
+
+  if (current.paymentStatus === "confirmed") {
+    throw new HttpError(409, "Finance has already confirmed payment for this booking.");
+  }
+
+  const updated = {
+    ...current,
+    paymentReference,
+    paymentSubmittedAt: new Date().toISOString(),
+    paymentStatus: "submitted",
+  };
+
+  await saveBooking(updated);
+
+  return {
+    body: {
+      booking: toTrackingView(updated),
+      message: "Transaction ID submitted successfully. Finance will verify and confirm payment.",
     },
     statusCode: 200,
   };
@@ -572,8 +622,12 @@ function toTrackingView(booking) {
     balance: booking.balance || 0,
     destination: booking.destination,
     eventName: booking.eventName,
+    paymentInstructionsName: PAYMENT_MOMO_NAME,
     fromDate: booking.fromDate || booking.travelDate,
+    paymentInstructionsNumber: PAYMENT_MOMO_NUMBER,
     paymentConfirmedAt: booking.paymentConfirmedAt || "",
+    paymentReference: booking.paymentReference || "",
+    paymentSubmittedAt: booking.paymentSubmittedAt || "",
     paymentStatus: booking.paymentStatus || "pending",
     processedAt: booking.processedAt || "",
     requesterName: booking.requesterName,
